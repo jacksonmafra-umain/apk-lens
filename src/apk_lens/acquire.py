@@ -18,6 +18,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -205,6 +206,30 @@ def _has_path(url: str) -> bool:
     return bool(urllib.parse.urlparse(url).path.strip("/"))
 
 
+ANY_HREF = re.compile(r"""href=["']([^"']+)["']""", re.I)
+
+
+def infer_wanted(html: str) -> set[str]:
+    """Work out which app a mirror page is about, from its own links.
+
+    Needed because the URL a user pastes does not always name the package
+    (`/accessy/download`), and without an anchor the advert filter has nothing
+    to compare against. A page is about one app, so that app's id dominates its
+    links while an advert appears once. Only a clear winner is accepted — a tie
+    means the page is ambiguous, and guessing there is how the wrong app gets
+    downloaded.
+    """
+    counts: Counter[str] = Counter()
+    for href in ANY_HREF.findall(html):
+        counts.update(package_ids_in(url_unescape(href)))
+    if not counts:
+        return set()
+    ranked = counts.most_common(2)
+    if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
+        return set()
+    return {ranked[0][0]}
+
+
 def _looks_like_download_target(url: str, wanted: set[str]) -> bool:
     """Is this plausibly the file, rather than another page on the same site?
 
@@ -271,6 +296,14 @@ def _open_file(url: str):
         response.close()
         visited.append(current)
         visited.append(page_url)
+
+        if not wanted:
+            wanted = infer_wanted(html)
+            if wanted:
+                console.note(
+                    f"this page is about {next(iter(wanted))}; "
+                    "links to other apps will be ignored"
+                )
 
         candidates = [
             link
