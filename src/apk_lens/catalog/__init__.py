@@ -12,7 +12,7 @@ parse cost once.
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +27,7 @@ class CatalogError(ApkLensError):
     """A catalog file is missing or malformed."""
 
 
-@lru_cache(maxsize=None)
+@cache
 def load(name: str) -> dict[str, Any]:
     """Load ``<name>.yaml`` from the catalog directory."""
     path = CATALOG_DIR / f"{name}.yaml"
