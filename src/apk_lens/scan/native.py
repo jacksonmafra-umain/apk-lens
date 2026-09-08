@@ -155,13 +155,10 @@ def scan(workspace, *, max_hosts_per_library: int = 25) -> NativeReport:
         report.native_bytes += size
 
         values = list(strings.iter_strings(path, strings.NATIVE_MIN_LENGTH))
-        hosts = sorted(
-            {
-                value.lower()
-                for value in values
-                if domains.is_hostname(value.strip().strip("/"))
-            }
-        )
+        hosts: set[str] = set()
+        for value in values:
+            hosts.update(domains.find_hostnames(value))
+        hosts = sorted(hosts)
 
         report.libraries.append(
             NativeLibrary(

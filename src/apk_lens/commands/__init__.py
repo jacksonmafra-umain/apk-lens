@@ -12,6 +12,7 @@ from apk_lens.commands import (
     corpus,
     doctor,
     manifest,
+    native,
     network,
     sdks,
     sinks,
@@ -28,6 +29,7 @@ COMMANDS: tuple[CommandSpec, ...] = (
     network.SPEC,
     sinks.SPEC,
     sdks.SPEC,
+    native.SPEC,
 )
 
 __all__ = ["COMMANDS", "CommandSpec"]
