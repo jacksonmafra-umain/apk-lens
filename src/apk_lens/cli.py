@@ -11,8 +11,9 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from apk_lens import __version__
+from apk_lens import __version__, console
 from apk_lens.commands import COMMANDS
+from apk_lens.errors import ApkLensError
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,7 +44,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_help()
         return 0
 
-    return int(handler(args) or 0)
+    try:
+        return int(handler(args) or 0)
+    except ApkLensError as failure:
+        console.error(str(failure))
+        if failure.hint:
+            console.note(failure.hint)
+        return failure.exit_code
+    except KeyboardInterrupt:
+        console.warn("interrupted; re-run the same command to resume")
+        return 130
 
 
 if __name__ == "__main__":  # pragma: no cover
