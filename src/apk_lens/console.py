@@ -44,15 +44,17 @@ def style(text: str, *names: str, stream=None) -> str:
 
 
 def info(message: str) -> None:
+    """Result content. Goes to stdout, which stays machine-parseable."""
     print(message)
 
 
 def step(message: str) -> None:
-    print(style("::", "cyan"), style(message, "bold"))
+    """Progress narration. Goes to stderr so `--json` output stays clean."""
+    print(style("::", "cyan"), style(message, "bold"), file=sys.stderr)
 
 
 def note(message: str) -> None:
-    print(style(f"   {message}", "dim"))
+    print(style(f"   {message}", "dim"), file=sys.stderr)
 
 
 def warn(message: str) -> None:
@@ -96,9 +98,9 @@ def timed(message: str) -> Iterator[None]:
 
 def progress(done: int, total: int, *, final: bool = False) -> None:
     """Single-line transfer progress; silent when output is not a terminal."""
-    if not color_enabled():
+    if not color_enabled(sys.stderr):
         if final:
-            print(f"   {done / 1024 / 1024:.1f} MB")
+            print(f"   {done / 1024 / 1024:.1f} MB", file=sys.stderr)
         return
     if total:
         pct = min(100, int(done * 100 / total))
@@ -106,4 +108,4 @@ def progress(done: int, total: int, *, final: bool = False) -> None:
     else:
         line = f"   {done / 1024 / 1024:7.1f} MB"
     end = "\n" if final else ""
-    print(f"\r{line}", end=end, flush=True)
+    print(f"\r{line}", end=end, flush=True, file=sys.stderr)

@@ -242,19 +242,42 @@ def _stream(response, target: Path, max_bytes: int) -> int:
     return written
 
 
+def _verified_cache(target: Path) -> Provenance | None:
+    """Return the recorded provenance when the file on disk still matches it."""
+    record = read_provenance(target)
+    if record and target.exists() and record.sha256 == sha256_file(target):
+        return record
+    return None
+
+
+def _cached_for(url: str, dest_dir: Path) -> Provenance | None:
+    name = Path(urllib.parse.urlparse(url).path).name
+    if not name:
+        return None
+    return _verified_cache(dest_dir / safe_filename(name))
+
+
 def download(url: str, dest_dir: Path, *, max_bytes: int = DEFAULT_MAX_BYTES,
              force: bool = False) -> Provenance:
     """Fetch ``url`` into ``dest_dir``, reusing an intact previous download."""
     dest_dir.mkdir(parents=True, exist_ok=True)
 
+    # Check the cache before touching the network: a 200 MB bundle should not be
+    # re-fetched because a mirror is slow, moved the file, or is offline today.
+    if not force:
+        cached = _cached_for(url, dest_dir)
+        if cached:
+            console.note(f"reusing {cached.path} (hash matches the recorded download)")
+            return cached
+
     with _open_file(url) as response:
         final_url = response.geturl()
         target = dest_dir / _filename_for(response, final_url)
-        cached = read_provenance(target)
         if target.exists() and not force:
-            if cached and cached.sha256 == sha256_file(target):
+            record = _verified_cache(target)
+            if record:
                 console.note(f"reusing {target} (already downloaded, hash matches)")
-                return cached
+                return record
             console.note(f"re-downloading {target.name} (no matching hash on disk)")
 
         console.note(f"downloading {target.name}")
