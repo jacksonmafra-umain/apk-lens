@@ -170,6 +170,21 @@ class Census:
             elif domains.looks_like_hostname(candidate):
                 self.rejected.add(candidate)
 
+    def _is_first_party(self, domain: str, hosts: list[str]) -> bool:
+        """Does a brand token from the package id appear in this domain?
+
+        Checked against the full hostnames as well as the registrable domain,
+        because the brand often sits in a subdomain — `api.brand.example.com`
+        reduces to `example.com`, and matching only that would file the app's
+        own servers as unattributed. It stays a heuristic either way, which is
+        why the bucket is described as "matches the app's own package or brand
+        tokens" rather than as ownership.
+        """
+        candidates = set(domains.labels_of(domain))
+        for host in hosts:
+            candidates.update(domains.labels_of(host))
+        return any(token in candidates for token in self.tokens)
+
     def finish(self) -> NetworkReport:
         data = catalog.load("hosts")
         operators = data.get("operators", [])
@@ -195,9 +210,7 @@ class Census:
 
             if is_specification:
                 bucket, entry = SPECIFICATION, None
-            elif self.tokens and any(
-                token in domains.labels_of(domain) for token in self.tokens
-            ):
+            elif self.tokens and self._is_first_party(domain, members):
                 bucket = FIRST_PARTY
             elif entry:
                 bucket = THIRD_PARTY

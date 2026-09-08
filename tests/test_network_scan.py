@@ -119,3 +119,14 @@ def test_catalog_operators_are_well_formed():
         assert entry.get("operator"), entry
         assert entry.get("match"), entry
         assert entry.get("purpose") in purposes, entry
+
+
+def test_a_brand_in_a_subdomain_is_still_recognised_as_first_party():
+    """`api.brand.example.com` reduces to `example.com`, which carries no brand
+    token — matching only the registrable domain files the app's own servers
+    under "unattributed"."""
+    result = network.scan_text(
+        "https://api.socialapp.example.com/v3/feed", package="com.sample.socialapp"
+    )
+    finding = next(f for f in result.findings if f.domain == "example.com")
+    assert finding.bucket == network.FIRST_PARTY
