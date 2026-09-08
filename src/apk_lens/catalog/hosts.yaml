@@ -1,0 +1,298 @@
+# Host attribution.
+#
+# A list of 400 domains means nothing on its own. Naming the operator turns it
+# into something a reader can reason about: "the app talks to its own servers,
+# four analytics vendors, two ad exchanges and one CDN" is an answer.
+#
+# `match` entries are matched against the registrable domain and against the
+# full hostname, case-insensitively, as a substring.
+#
+# purpose values:
+#   api            first-party or vendor API traffic
+#   cdn            static content delivery
+#   analytics      product and behavioural measurement
+#   attribution    linking an install or a click to a campaign
+#   ads            advertising supply, demand or measurement
+#   crash          crash and performance reporting
+#   push           push notifications and in-app messaging
+#   auth           sign-in and identity
+#   payments       payment processing
+#   antifraud      bot, fraud and device-integrity checks
+#   config         remote configuration and A/B testing
+#   support        customer support and feedback
+#   infrastructure cloud hosting, DNS, certificates
+#   specification  namespace and documentation URLs that are not network traffic
+version: 1
+
+# These are compiled into almost every Android app and are never contacted.
+# Counting them as "servers the app talks to" is the most common way a host
+# census overstates its findings, so they get their own bucket.
+specification_markers:
+  - schemas.android.com
+  - www.w3.org
+  - www.apache.org
+  - xmlpull.org
+  - java.sun.com
+  - javax.xml
+  - purl.org
+  - relaxng.org
+  - jcp.org
+  - json-schema.org
+  - openjdk.org
+  - kotlinlang.org
+  - github.com
+  - stackoverflow.com
+  - developer.android.com
+  - source.android.com
+  - developers.google.com
+  - opensource.org
+  - creativecommons.org
+  - gnu.org
+
+operators:
+  - operator: Google
+    match: [google.com, googleapis.com, gstatic.com, googleusercontent.com, google-analytics.com,
+            googletagmanager.com, gvt1.com, gvt2.com, withgoogle.com, goo.gl, android.com]
+    category: platform
+    purpose: api
+    collects: Play services identity, app configuration, analytics events.
+  - operator: Google Firebase
+    match: [firebaseio.com, firebaseapp.com, firebase.google.com, firebaseinstallations.googleapis.com,
+            firebaseremoteconfig.googleapis.com, firebasedynamiclinks.googleapis.com]
+    category: backend
+    purpose: config
+    collects: Installation identifier, remote config, event analytics.
+  - operator: Google Crashlytics
+    match: [crashlytics.com, firebasecrashlytics.googleapis.com]
+    category: crash reporting
+    purpose: crash
+    collects: Stack traces, device model, OS version, breadcrumb logs.
+  - operator: Google Ad Services
+    match: [doubleclick.net, googlesyndication.com, googleadservices.com, admob.com, adservice.google.com]
+    category: advertising
+    purpose: ads
+    collects: Advertising identifier, ad interactions, coarse location.
+  - operator: Meta
+    match: [facebook.com, facebook.net, fbcdn.net, fb.com, graph.facebook.com, instagram.com,
+            whatsapp.com, meta.com]
+    category: advertising and social
+    purpose: attribution
+    collects: Advertising identifier, app events, install attribution.
+  - operator: Amazon Web Services
+    match: [amazonaws.com, awsstatic.com, cloudfront.net, amazon.com]
+    category: cloud hosting
+    purpose: infrastructure
+    collects: Whatever the app's own backend sends; AWS is the host, not the party.
+  - operator: Microsoft Azure
+    match: [azure.com, azureedge.net, azurewebsites.net, windows.net, microsoft.com, msedge.net]
+    category: cloud hosting
+    purpose: infrastructure
+    collects: Whatever the app's own backend sends.
+  - operator: Cloudflare
+    match: [cloudflare.com, cloudflare.net, cdnjs.cloudflare.com, workers.dev, pages.dev]
+    category: cdn
+    purpose: cdn
+    collects: Request metadata in transit.
+  - operator: Fastly
+    match: [fastly.net, fastlylb.net, fastly.com]
+    category: cdn
+    purpose: cdn
+  - operator: Akamai
+    match: [akamai.net, akamaized.net, akamaihd.net, edgekey.net, edgesuite.net, akamaitechnologies.com]
+    category: cdn
+    purpose: cdn
+  - operator: Apple
+    match: [apple.com, icloud.com, mzstatic.com, itunes.apple.com]
+    category: platform
+    purpose: api
+  - operator: Adjust
+    match: [adjust.com, adjust.io, adjust.net.in, adjust.world]
+    category: attribution
+    purpose: attribution
+    collects: Advertising identifier, install and click attribution, session events.
+  - operator: AppsFlyer
+    match: [appsflyer.com, appsflyersdk.com, af-webhook.com]
+    category: attribution
+    purpose: attribution
+    collects: Advertising identifier, referrer, install and in-app events.
+  - operator: Branch
+    match: [branch.io, bnc.lt, app.link]
+    category: attribution
+    purpose: attribution
+    collects: Device fingerprint for deferred deep linking, click attribution.
+  - operator: Kochava
+    match: [kochava.com, kochava.net]
+    category: attribution
+    purpose: attribution
+  - operator: Singular
+    match: [singular.net, sng.link]
+    category: attribution
+    purpose: attribution
+  - operator: Amplitude
+    match: [amplitude.com, api.amplitude.com]
+    category: product analytics
+    purpose: analytics
+    collects: Event stream keyed to a user or device identifier.
+  - operator: Mixpanel
+    match: [mixpanel.com]
+    category: product analytics
+    purpose: analytics
+  - operator: Segment
+    match: [segment.com, segment.io, segmentapis.com]
+    category: analytics pipeline
+    purpose: analytics
+    collects: Forwards a single event stream to many other vendors.
+  - operator: Firebase Analytics via Google
+    match: [app-measurement.com]
+    category: product analytics
+    purpose: analytics
+    collects: Automatic and custom app events, advertising identifier.
+  - operator: Sentry
+    match: [sentry.io, ingest.sentry.io]
+    category: crash reporting
+    purpose: crash
+  - operator: Bugsnag
+    match: [bugsnag.com]
+    category: crash reporting
+    purpose: crash
+  - operator: Datadog
+    match: [datadoghq.com, datadoghq.eu, ddog-gov.com]
+    category: observability
+    purpose: crash
+  - operator: New Relic
+    match: [newrelic.com, nr-data.net]
+    category: observability
+    purpose: crash
+  - operator: Unity
+    match: [unity3d.com, unityads.unity3d.com, unity.com]
+    category: game platform and ads
+    purpose: ads
+  - operator: AppLovin
+    match: [applovin.com, applvn.com, applovin-a.akamaihd.net]
+    category: advertising
+    purpose: ads
+  - operator: ironSource
+    match: [ironsrc.com, ironsource.mobi, supersonicads.com]
+    category: advertising
+    purpose: ads
+  - operator: Vungle
+    match: [vungle.com, vungle.net]
+    category: advertising
+    purpose: ads
+  - operator: InMobi
+    match: [inmobi.com, inmobicdn.net]
+    category: advertising
+    purpose: ads
+  - operator: Criteo
+    match: [criteo.com, criteo.net]
+    category: advertising
+    purpose: ads
+  - operator: PubMatic
+    match: [pubmatic.com]
+    category: advertising exchange
+    purpose: ads
+  - operator: The Trade Desk
+    match: [adsrvr.org, thetradedesk.com]
+    category: advertising exchange
+    purpose: ads
+  - operator: Smaato
+    match: [smaato.net, smaato.com]
+    category: advertising exchange
+    purpose: ads
+  - operator: Integral Ad Science
+    match: [adsafeprotected.com, iasds01.com]
+    category: ad verification
+    purpose: ads
+  - operator: DoubleVerify
+    match: [doubleverify.com, dv.tech]
+    category: ad verification
+    purpose: ads
+  - operator: Braze
+    match: [braze.com, appboy.com, braze.eu]
+    category: engagement
+    purpose: push
+  - operator: OneSignal
+    match: [onesignal.com]
+    category: engagement
+    purpose: push
+  - operator: Airship
+    match: [urbanairship.com, airship.com, asnapieu.com]
+    category: engagement
+    purpose: push
+  - operator: CleverTap
+    match: [clevertap.com, wzrkt.com]
+    category: engagement
+    purpose: push
+  - operator: Iterable
+    match: [iterable.com]
+    category: engagement
+    purpose: push
+  - operator: Intercom
+    match: [intercom.io, intercomcdn.com]
+    category: support
+    purpose: support
+  - operator: Zendesk
+    match: [zendesk.com, zdassets.com]
+    category: support
+    purpose: support
+  - operator: Helpshift
+    match: [helpshift.com]
+    category: support
+    purpose: support
+  - operator: Stripe
+    match: [stripe.com, stripe.network, js.stripe.com]
+    category: payments
+    purpose: payments
+  - operator: PayPal
+    match: [paypal.com, paypalobjects.com, braintreegateway.com, braintree-api.com]
+    category: payments
+    purpose: payments
+  - operator: Adyen
+    match: [adyen.com]
+    category: payments
+    purpose: payments
+  - operator: Klarna
+    match: [klarna.com, klarnaservices.com]
+    category: payments
+    purpose: payments
+  - operator: ThreatMetrix
+    match: [threatmetrix.com, online-metrix.net]
+    category: anti-fraud
+    purpose: antifraud
+    collects: Deep device fingerprint used to recognise a device across sessions and apps.
+  - operator: Sift
+    match: [siftscience.com, sift.com]
+    category: anti-fraud
+    purpose: antifraud
+  - operator: Arkose Labs
+    match: [arkoselabs.com, funcaptcha.com]
+    category: anti-fraud
+    purpose: antifraud
+  - operator: hCaptcha
+    match: [hcaptcha.com]
+    category: anti-fraud
+    purpose: antifraud
+  - operator: Cloudflare Turnstile
+    match: [challenges.cloudflare.com]
+    category: anti-fraud
+    purpose: antifraud
+  - operator: Twilio
+    match: [twilio.com, twiliocdn.com]
+    category: messaging infrastructure
+    purpose: api
+  - operator: Optimizely
+    match: [optimizely.com, optimizelyapis.com]
+    category: experimentation
+    purpose: config
+  - operator: LaunchDarkly
+    match: [launchdarkly.com, ld.catamorphic.com]
+    category: experimentation
+    purpose: config
+  - operator: Let's Encrypt
+    match: [letsencrypt.org, acme-v02.api.letsencrypt.org]
+    category: certificates
+    purpose: infrastructure
+  - operator: OCSP and certificate services
+    match: [ocsp., crl., digicert.com, globalsign.com, sectigo.com, entrust.net, verisign.com]
+    category: certificates
+    purpose: infrastructure
