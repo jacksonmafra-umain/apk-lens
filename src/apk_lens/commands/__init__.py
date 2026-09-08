@@ -15,6 +15,7 @@ from apk_lens.commands import (
     manifest,
     native,
     network,
+    prompts,
     report,
     sdks,
     sinks,
@@ -34,6 +35,7 @@ COMMANDS: tuple[CommandSpec, ...] = (
     sdks.SPEC,
     native.SPEC,
     report.SPEC,
+    prompts.SPEC,
 )
 
 __all__ = ["COMMANDS", "CommandSpec"]
