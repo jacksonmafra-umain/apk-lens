@@ -58,12 +58,16 @@ def resolve(query: str) -> str:
     if query in available:
         return query
 
-    lowered = query.lower().lstrip("0") or "0"
-    matches = [
-        name
-        for name in available
-        if name.split("-", 1)[0].lstrip("0") == lowered or lowered in name.lower()
-    ]
+    lowered = query.lower()
+    if lowered.isdigit():
+        # A numeric query matches the prefix only: substring matching would make
+        # "0" match every prompt.
+        wanted = lowered.lstrip("0") or "0"
+        matches = [
+            name for name in available if (name.split("-", 1)[0].lstrip("0") or "0") == wanted
+        ]
+    else:
+        matches = [name for name in available if lowered in name.lower()]
     if len(matches) == 1:
         return matches[0]
     if not matches:
