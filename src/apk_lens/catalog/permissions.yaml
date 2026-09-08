@@ -1,0 +1,332 @@
+# Android permission catalog.
+#
+# Each entry answers three questions a reader actually has:
+#   means           what the permission lets the app do, in plain language
+#   justified_when  the feature that normally explains it
+#   tier            routine | sensitive | high_risk
+#
+# `tier` is about the *potential* for harm, not an accusation: a camera app
+# holding CAMERA is expected, and the same permission in a calculator is not.
+# That comparison is what `categories` below is for.
+#
+# Adding an entry needs no Python. See docs/extending-the-catalogs.md.
+version: 1
+
+tiers:
+  routine:
+    label: expected
+    meaning: Needed by most apps, or granted without a prompt and hard to abuse alone.
+  sensitive:
+    label: sensitive
+    meaning: Reaches personal data or hardware. Reasonable for some features, not for all.
+  high_risk:
+    label: high risk
+    meaning: >
+      Reads other people's data, tracks a person, or survives the user's attempts to
+      limit the app. Wants a specific, visible feature behind it.
+
+# Permissions a reader should expect to see for an app of each kind. Anything
+# outside its category's list is reported as notable rather than normal.
+categories:
+  social:
+    - android.permission.CAMERA
+    - android.permission.RECORD_AUDIO
+    - android.permission.READ_CONTACTS
+    - android.permission.READ_MEDIA_IMAGES
+    - android.permission.READ_MEDIA_VIDEO
+    - android.permission.POST_NOTIFICATIONS
+    - android.permission.ACCESS_COARSE_LOCATION
+  messaging:
+    - android.permission.CAMERA
+    - android.permission.RECORD_AUDIO
+    - android.permission.READ_CONTACTS
+    - android.permission.WRITE_CONTACTS
+    - android.permission.POST_NOTIFICATIONS
+    - android.permission.READ_MEDIA_IMAGES
+  media:
+    - android.permission.READ_MEDIA_IMAGES
+    - android.permission.READ_MEDIA_VIDEO
+    - android.permission.READ_MEDIA_AUDIO
+    - android.permission.FOREGROUND_SERVICE
+    - android.permission.POST_NOTIFICATIONS
+  camera:
+    - android.permission.CAMERA
+    - android.permission.RECORD_AUDIO
+    - android.permission.READ_MEDIA_IMAGES
+    - android.permission.ACCESS_FINE_LOCATION
+  navigation:
+    - android.permission.ACCESS_FINE_LOCATION
+    - android.permission.ACCESS_COARSE_LOCATION
+    - android.permission.ACCESS_BACKGROUND_LOCATION
+    - android.permission.FOREGROUND_SERVICE
+  fitness:
+    - android.permission.ACTIVITY_RECOGNITION
+    - android.permission.ACCESS_FINE_LOCATION
+    - android.permission.BODY_SENSORS
+    - android.permission.FOREGROUND_SERVICE
+  shopping:
+    - android.permission.CAMERA
+    - android.permission.ACCESS_COARSE_LOCATION
+    - android.permission.POST_NOTIFICATIONS
+  game:
+    - android.permission.VIBRATE
+    - android.permission.POST_NOTIFICATIONS
+  utility: []
+  browser:
+    - android.permission.CAMERA
+    - android.permission.RECORD_AUDIO
+    - android.permission.ACCESS_FINE_LOCATION
+  unknown: []
+
+# Dangerous permissions whose *absence* is worth stating out loud. A report that
+# only lists what an app asks for reads as an indictment; saying what it did not
+# ask for is the other half of the evidence.
+notable_absences:
+  - android.permission.READ_SMS
+  - android.permission.RECEIVE_SMS
+  - android.permission.SEND_SMS
+  - android.permission.READ_CALL_LOG
+  - android.permission.READ_PHONE_NUMBERS
+  - android.permission.READ_CALENDAR
+  - android.permission.QUERY_ALL_PACKAGES
+  - android.permission.SYSTEM_ALERT_WINDOW
+  - android.permission.REQUEST_INSTALL_PACKAGES
+  - android.permission.PACKAGE_USAGE_STATS
+  - android.permission.BIND_ACCESSIBILITY_SERVICE
+  - android.permission.MANAGE_EXTERNAL_STORAGE
+
+permissions:
+  android.permission.INTERNET:
+    tier: routine
+    means: Open network connections.
+    justified_when: Any app that talks to a server.
+  android.permission.ACCESS_NETWORK_STATE:
+    tier: routine
+    means: See whether the device is online and on what kind of connection.
+    justified_when: Deciding when to sync or how large a download to attempt.
+  android.permission.ACCESS_WIFI_STATE:
+    tier: sensitive
+    means: Read Wi-Fi details, including the current network's identity.
+    justified_when: Local device discovery, casting, or offline features.
+    also_used_for: Device and location fingerprinting, since networks are stable landmarks.
+  android.permission.CHANGE_WIFI_STATE:
+    tier: sensitive
+    means: Turn Wi-Fi scanning on and connect to networks.
+    justified_when: Setting up a smart device over Wi-Fi.
+  android.permission.NEARBY_WIFI_DEVICES:
+    tier: sensitive
+    means: Find nearby Wi-Fi devices without asking for location.
+    justified_when: Casting, printing, or pairing with local hardware.
+    also_used_for: Approximating location from the surrounding networks.
+  android.permission.BLUETOOTH:
+    tier: routine
+    means: Use Bluetooth on older Android versions.
+    justified_when: Audio, wearables, or accessory support.
+  android.permission.BLUETOOTH_SCAN:
+    tier: sensitive
+    means: Scan for nearby Bluetooth devices.
+    justified_when: Pairing with headphones, wearables, or beacons.
+    also_used_for: Presence and proximity tracking via nearby beacons.
+  android.permission.BLUETOOTH_CONNECT:
+    tier: sensitive
+    means: Connect to paired Bluetooth devices.
+    justified_when: Playing audio to, or reading data from, an accessory.
+  android.permission.VIBRATE:
+    tier: routine
+    means: Vibrate the device.
+    justified_when: Feedback on taps, alarms, notifications.
+  android.permission.WAKE_LOCK:
+    tier: routine
+    means: Keep the device awake.
+    justified_when: Playback, navigation, or an upload that must finish.
+  android.permission.FOREGROUND_SERVICE:
+    tier: routine
+    means: Run a visible ongoing task.
+    justified_when: Music playback, navigation, a file transfer.
+  android.permission.POST_NOTIFICATIONS:
+    tier: routine
+    means: Show notifications.
+    justified_when: Any app that needs to tell the user something later.
+  android.permission.RECEIVE_BOOT_COMPLETED:
+    tier: sensitive
+    means: Start work when the device finishes booting.
+    justified_when: Alarms, sync schedules, or a widget that must repopulate.
+    also_used_for: Making sure background telemetry resumes without the app being opened.
+  android.permission.CAMERA:
+    tier: sensitive
+    means: Take photos and record video.
+    justified_when: Capture, scanning a code, a video call.
+  android.permission.RECORD_AUDIO:
+    tier: sensitive
+    means: Record from the microphone.
+    justified_when: Voice messages, calls, video recording, dictation.
+  android.permission.ACCESS_FINE_LOCATION:
+    tier: sensitive
+    means: Read precise location, typically from GPS.
+    justified_when: Navigation, local search, geotagging.
+  android.permission.ACCESS_COARSE_LOCATION:
+    tier: sensitive
+    means: Read approximate location, from networks rather than GPS.
+    justified_when: Regional content, currency, or nearby results.
+  android.permission.ACCESS_BACKGROUND_LOCATION:
+    tier: high_risk
+    means: Read location while the app is not in use.
+    justified_when: Turn-by-turn navigation, geofenced reminders, tracking a run.
+    also_used_for: Continuous movement history, which is one of the most identifying data sets there is.
+  android.permission.READ_CONTACTS:
+    tier: high_risk
+    means: Read the address book.
+    justified_when: A "find friends" feature the user chose to use.
+    also_used_for: Building a social graph, including of people who never installed the app.
+  android.permission.WRITE_CONTACTS:
+    tier: high_risk
+    means: Add or change contacts.
+    justified_when: Saving a contact the user created inside the app.
+  android.permission.GET_ACCOUNTS:
+    tier: sensitive
+    means: List the accounts configured on the device.
+    justified_when: Offering a one-tap sign-in with an account already present.
+    also_used_for: Learning the user's email addresses without asking.
+  android.permission.READ_CALENDAR:
+    tier: high_risk
+    means: Read calendar events.
+    justified_when: Scheduling features the user asked for.
+  android.permission.WRITE_CALENDAR:
+    tier: high_risk
+    means: Create or change calendar events.
+    justified_when: Adding a booking the user just made.
+  android.permission.READ_SMS:
+    tier: high_risk
+    means: Read text messages.
+    justified_when: Almost never. An SMS app, or a one-time-code autofill.
+    also_used_for: Harvesting message content, including codes and private conversations.
+  android.permission.RECEIVE_SMS:
+    tier: high_risk
+    means: Be notified of incoming text messages.
+    justified_when: An SMS app, or verifying a phone number.
+  android.permission.SEND_SMS:
+    tier: high_risk
+    means: Send text messages, which can cost money.
+    justified_when: An SMS app.
+  android.permission.READ_CALL_LOG:
+    tier: high_risk
+    means: Read who was called and when.
+    justified_when: A dialler or a call-screening app.
+  android.permission.READ_PHONE_STATE:
+    tier: high_risk
+    means: Read network operator, SIM state, and on old versions the device ID.
+    justified_when: Pausing playback during a call, or adapting to the carrier.
+    also_used_for: A stable device identifier, historically the most abused one on Android.
+  android.permission.READ_PHONE_NUMBERS:
+    tier: high_risk
+    means: Read the device's own phone numbers.
+    justified_when: Pre-filling a number the user is about to verify.
+  android.permission.CALL_PHONE:
+    tier: sensitive
+    means: Start a call without the user confirming in the dialler.
+    justified_when: A dialler, or a "call this business" button.
+  android.permission.READ_MEDIA_IMAGES:
+    tier: sensitive
+    means: Read photos from shared storage.
+    justified_when: Picking a picture to upload or edit.
+    also_used_for: Reading the location and timestamps embedded in photo metadata.
+  android.permission.READ_MEDIA_VIDEO:
+    tier: sensitive
+    means: Read videos from shared storage.
+    justified_when: Picking a video to upload or edit.
+  android.permission.READ_MEDIA_AUDIO:
+    tier: sensitive
+    means: Read audio files from shared storage.
+    justified_when: A music player reading local files.
+  android.permission.READ_EXTERNAL_STORAGE:
+    tier: sensitive
+    means: Read shared storage on older Android versions.
+    justified_when: Importing user files before the media permissions existed.
+  android.permission.WRITE_EXTERNAL_STORAGE:
+    tier: sensitive
+    means: Write to shared storage on older Android versions.
+    justified_when: Saving a download or an export where the user can find it.
+  android.permission.MANAGE_EXTERNAL_STORAGE:
+    tier: high_risk
+    means: Read and write nearly all files on the device.
+    justified_when: A file manager or a backup tool. Very little else.
+    also_used_for: Reading other apps' exported data and the user's whole document store.
+  android.permission.QUERY_ALL_PACKAGES:
+    tier: high_risk
+    means: List every app installed on the device.
+    justified_when: An app store, a launcher, or an antivirus.
+    also_used_for: Profiling a person by the apps they own, and detecting competitors.
+  android.permission.REQUEST_INSTALL_PACKAGES:
+    tier: high_risk
+    means: Ask the user to install another app package.
+    justified_when: An app store or a self-updater outside Google Play.
+    also_used_for: Delivering additional code after review.
+  android.permission.PACKAGE_USAGE_STATS:
+    tier: high_risk
+    means: See which apps the user opens and for how long.
+    justified_when: A digital-wellbeing or parental-control tool.
+  android.permission.SYSTEM_ALERT_WINDOW:
+    tier: high_risk
+    means: Draw on top of other apps.
+    justified_when: A floating player, a chat head, an accessibility overlay.
+    also_used_for: Overlay attacks that trick a user into tapping something else.
+  android.permission.BIND_ACCESSIBILITY_SERVICE:
+    tier: high_risk
+    means: Observe and act on screen content across the whole device.
+    justified_when: A genuine accessibility service.
+    also_used_for: Reading everything the user sees and types.
+  android.permission.BODY_SENSORS:
+    tier: sensitive
+    means: Read heart rate and similar body sensors.
+    justified_when: Fitness and health tracking.
+  android.permission.ACTIVITY_RECOGNITION:
+    tier: sensitive
+    means: Detect whether the user is walking, running, cycling or driving.
+    justified_when: Step counting and workout detection.
+    also_used_for: Behavioural profiling and inferring commute patterns.
+  android.permission.USE_BIOMETRIC:
+    tier: routine
+    means: Ask the system to verify the user's fingerprint or face.
+    justified_when: Unlocking the app itself. The app never sees the biometric data.
+  android.permission.USE_FINGERPRINT:
+    tier: routine
+    means: The older form of biometric verification.
+    justified_when: Unlocking the app on an old Android version.
+  android.permission.AD_ID:
+    tier: sensitive
+    means: Read the resettable advertising identifier.
+    justified_when: Ad attribution the user can reset and opt out of.
+    also_used_for: Joining a person's activity across unrelated apps and vendors.
+  com.google.android.gms.permission.AD_ID:
+    tier: sensitive
+    means: Read the resettable advertising identifier.
+    justified_when: Ad attribution the user can reset and opt out of.
+    also_used_for: Joining a person's activity across unrelated apps and vendors.
+  android.permission.SCHEDULE_EXACT_ALARM:
+    tier: sensitive
+    means: Run code at an exact time, waking the device.
+    justified_when: Alarms, reminders, calendar notifications.
+    also_used_for: Reliable background wake-ups for telemetry.
+  android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS:
+    tier: high_risk
+    means: Ask to be exempt from battery limits.
+    justified_when: Alarm clocks and health monitors that must not be suspended.
+    also_used_for: Staying resident and networked in the background indefinitely.
+  android.permission.CHANGE_NETWORK_STATE:
+    tier: sensitive
+    means: Change network connectivity settings.
+    justified_when: Tethering or VPN helpers.
+  android.permission.BIND_VPN_SERVICE:
+    tier: high_risk
+    means: Route all device traffic through the app.
+    justified_when: A VPN. Nothing else.
+    also_used_for: Seeing and modifying every request the device makes.
+  android.permission.CAPTURE_VIDEO_OUTPUT:
+    tier: high_risk
+    means: Capture what is on the screen.
+    justified_when: Screen recording and casting the user starts.
+  android.permission.RECEIVE_USER_PRESENT:
+    tier: sensitive
+    means: Know when the user unlocks the device.
+    justified_when: Refreshing content the moment the phone is picked up.
+    also_used_for: Session and usage-pattern telemetry.
