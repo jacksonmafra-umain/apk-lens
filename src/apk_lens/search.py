@@ -13,6 +13,7 @@ an optional tool.
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from collections.abc import Iterable, Iterator, Sequence
@@ -52,9 +53,35 @@ def _combined(rules: Sequence[Rule]) -> str:
     return "|".join(f"(?:{rule.pattern})" for rule in rules)
 
 
-def _ripgrep_lines(pattern: str, roots: Sequence[Path], executable: str) -> Iterator[Hit]:
+def _ripgrep_supports(pattern: str, executable: str) -> list[str] | None:
+    """Return the ripgrep flags that make ``pattern`` work, or None if it cannot.
+
+    ripgrep's default engine has no lookaround. Rather than silently returning
+    zero hits — the worst possible failure for a security scan — the pattern is
+    probed first, then retried with PCRE2, and only then handed to Python.
+    """
+    for flags in ([], ["--pcre2"]):
+        try:
+            probe = subprocess.run(  # noqa: S603 - fixed argv, no shell
+                [executable, *flags, "--quiet", "-e", pattern, os.devnull],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if probe.returncode in (0, 1):  # 0 = matched, 1 = no match, 2 = error
+            return flags
+    return None
+
+
+def _ripgrep_lines(
+    pattern: str, roots: Sequence[Path], executable: str, flags: Sequence[str] = ()
+) -> Iterator[Hit]:
     command = [
         executable,
+        *flags,
         "--no-messages",
         "--no-heading",
         # Without this, ripgrep omits the path when handed a single file.
@@ -109,6 +136,16 @@ def _python_lines(pattern: str, roots: Sequence[Path]) -> Iterator[Hit]:
             continue
 
 
+def _lines(pattern: str, roots: Sequence[Path]) -> Iterator[Hit]:
+    """Pick a search engine that can actually run ``pattern``."""
+    ripgrep = tools.find("ripgrep")
+    if ripgrep.found:
+        flags = _ripgrep_supports(pattern, ripgrep.path)
+        if flags is not None:
+            return _ripgrep_lines(pattern, roots, ripgrep.path, flags)
+    return _python_lines(pattern, roots)
+
+
 def scan(
     rules: Sequence[Rule],
     roots: Sequence[Path],
@@ -127,12 +164,7 @@ def scan(
         return results
 
     compiled = [(rule.rule_id, re.compile(rule.pattern, re.IGNORECASE)) for rule in rules]
-    ripgrep = tools.find("ripgrep")
-    lines = (
-        _ripgrep_lines(_combined(rules), roots, ripgrep.path)
-        if ripgrep.found
-        else _python_lines(_combined(rules), roots)
-    )
+    lines = _lines(_combined(rules), roots)
 
     saturated: set[str] = set()
     for hit in lines:
@@ -158,13 +190,7 @@ def count(rules: Sequence[Rule], roots: Sequence[Path]) -> dict[str, int]:
         return tally
 
     compiled = [(rule.rule_id, re.compile(rule.pattern, re.IGNORECASE)) for rule in rules]
-    ripgrep = tools.find("ripgrep")
-    lines = (
-        _ripgrep_lines(_combined(rules), roots, ripgrep.path)
-        if ripgrep.found
-        else _python_lines(_combined(rules), roots)
-    )
-    for hit in lines:
+    for hit in _lines(_combined(rules), roots):
         for rule_id, matcher in compiled:
             if matcher.search(hit.text):
                 tally[rule_id] += 1

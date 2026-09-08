@@ -299,7 +299,9 @@ categories:
         legitimate_use: Detecting an emulator, or reading CPU capability.
         proven_by: Seeing which paths are read and whether the contents are transmitted.
       - id: other_app_data
-        pattern: /data/data/(?!\{|%s)|/data/user/0/(?!\{|%s)
+        # Kept lookaround-free so the pattern works in every search engine:
+        # a literal package path starts with a letter, a placeholder does not.
+        pattern: '/data/data/[a-z]|/data/user/0/[a-z]'
         means: Reference an application data directory by path.
         legitimate_use: Its own directory, usually via a formatted string.
         proven_by: >

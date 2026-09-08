@@ -84,3 +84,15 @@ def test_missing_roots_are_ignored(tmp_path: Path, engine):
 
 def test_no_rules_means_no_work(tree: Path):
     assert search.scan([], [tree]) == {}
+
+
+def test_a_lookaround_pattern_still_returns_hits(tmp_path: Path):
+    """ripgrep's default engine has no lookaround.
+
+    Silently returning zero hits would be the worst possible failure for a
+    security scan, so the engine is probed and the search falls back.
+    """
+    target = tmp_path / "Paths.java"
+    target.write_text('String p = "/data/data/com.other.app/files";\n')
+    rules = [search.Rule("other_app_data", r"/data/data/(?!\{|%s)")]
+    assert len(search.scan(rules, [target])["other_app_data"]) == 1
