@@ -9,14 +9,10 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 
 from apk_lens import __version__
-
-# (name, help text, registration function). Registration functions attach their
-# own arguments to the sub-parser and set ``func`` as the handler.
-Registrar = Callable[[argparse.ArgumentParser], None]
-COMMANDS: list[tuple[str, str, Registrar]] = []
+from apk_lens.commands import COMMANDS
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -31,9 +27,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"apk-lens {__version__}")
     subparsers = parser.add_subparsers(dest="command", metavar="<command>")
 
-    for name, help_text, register in COMMANDS:
-        sub = subparsers.add_parser(name, help=help_text, description=help_text)
-        register(sub)
+    for command in COMMANDS:
+        sub = subparsers.add_parser(command.name, help=command.help, description=command.help)
+        command.register(sub)
 
     return parser
 

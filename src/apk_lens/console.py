@@ -27,9 +27,6 @@ OK = "ok"
 WARN = "optional"
 MISSING = "missing"
 
-_SYMBOLS = {OK: ("+", "green"), WARN: ("~", "yellow"), MISSING: ("-", "red")}
-
-
 def color_enabled(stream=None) -> bool:
     stream = stream or sys.stdout
     if os.environ.get("NO_COLOR"):
@@ -44,11 +41,6 @@ def style(text: str, *names: str, stream=None) -> str:
         return text
     codes = ";".join(_STYLES[n] for n in names if n in _STYLES)
     return f"\033[{codes}m{text}\033[0m" if codes else text
-
-
-def status_symbol(status: str) -> str:
-    symbol, name = _SYMBOLS.get(status, ("?", "dim"))
-    return style(symbol, name)
 
 
 def info(message: str) -> None:
