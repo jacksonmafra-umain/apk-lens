@@ -18,6 +18,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -44,7 +45,24 @@ MAX_PAGE_HOPS = 2
 PAGE_READ_LIMIT = 512 * 1024
 # The query string is part of the link: signed CDN URLs stop working without it.
 FILE_LINK = re.compile(r"""href=["']([^"']+\.(?:xapk|apks|apk)(?:\?[^"']*)?)["']""", re.I)
+
+# Mirrors also serve extension-less download URLs. The button is usually an
+# anchor with a recognisable id, and the target sits on a dedicated download
+# host — `https://d.<mirror>/b/XAPK/<package>?version=latest` and similar.
+NAMED_DOWNLOAD_LINK = re.compile(
+    r"""<a[^>]{0,400}?id=["'][^"']*download[^"']*["'][^>]{0,400}?href=["']([^"']+)["']"""
+    r"""|<a[^>]{0,400}?href=["']([^"']+)["'][^>]{0,400}?id=["'][^"']*download[^"']*["']""",
+    re.I,
+)
+DOWNLOAD_HOST_LINK = re.compile(
+    r"""href=["'](https?://(?:d|dl|download)\.[^"'/]+/[^"']+)["']""", re.I
+)
 DOWNLOAD_LINK = re.compile(r"""href=["']([^"']*(?:/download|download=|/dl/)[^"']*)["']""", re.I)
+
+# A package id in a path or query: `com.example.app`, three or more segments,
+# each starting with a letter so a version string such as `App_1.0.xapk` is not
+# mistaken for one.
+PACKAGE_ID = re.compile(r"\b([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){2,})\b", re.I)
 
 LOCAL = "local"
 DOWNLOAD = "download"
@@ -166,14 +184,96 @@ def _open(url: str):
         raise AcquisitionError(f"could not reach {url}: {failure}") from failure
 
 
-def _page_links(html: str, base_url: str) -> list[str]:
-    """Direct file links first, then anything that looks like a download step."""
+def url_unescape(url: str) -> str:
+    """Undo the HTML escaping a page applies to its own links."""
+    return url.replace("&amp;", "&").replace("&#38;", "&")
+
+
+def package_ids_in(text: str) -> set[str]:
+    """Package-id-shaped tokens in a URL or a filename.
+
+    Only the path and query are scanned, because a hostname is dotted too and
+    `apkpure.com` is not a package id — while `com.example.app` genuinely is,
+    so filtering by suffix would throw away the real answer.
+    """
+    parsed = urllib.parse.urlparse(text)
+    haystack = f"{parsed.path}?{parsed.query}" if parsed.scheme else text
+    return {match.group(1).lower() for match in PACKAGE_ID.finditer(haystack)}
+
+
+def _has_path(url: str) -> bool:
+    """A bare host is a link to a site, not to a file."""
+    return bool(urllib.parse.urlparse(url).path.strip("/"))
+
+
+ANY_HREF = re.compile(r"""href=["']([^"']+)["']""", re.I)
+
+
+def infer_wanted(html: str) -> set[str]:
+    """Work out which app a mirror page is about, from its own links.
+
+    Needed because the URL a user pastes does not always name the package
+    (`/accessy/download`), and without an anchor the advert filter has nothing
+    to compare against. A page is about one app, so that app's id dominates its
+    links while an advert appears once. Only a clear winner is accepted — a tie
+    means the page is ambiguous, and guessing there is how the wrong app gets
+    downloaded.
+    """
+    counts: Counter[str] = Counter()
+    for href in ANY_HREF.findall(html):
+        counts.update(package_ids_in(url_unescape(href)))
+    if not counts:
+        return set()
+    ranked = counts.most_common(2)
+    if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
+        return set()
+    return {ranked[0][0]}
+
+
+def _looks_like_download_target(url: str, wanted: set[str]) -> bool:
+    """Is this plausibly the file, rather than another page on the same site?
+
+    Applied to anchors matched by their id, because "download" appears in the
+    id of plenty of buttons that lead to a sign-in page instead of a file.
+    """
+    parsed = urllib.parse.urlparse(url)
+    if parsed.path.lower().endswith((".apk", ".xapk", ".apks")):
+        return True
+    if parsed.hostname and parsed.hostname.split(".", 1)[0] in ("d", "dl", "download"):
+        return True
+    return bool(wanted and package_ids_in(url) & wanted)
+
+
+def _page_links(html: str, base_url: str, *, wanted: set[str] | None = None) -> list[str]:
+    """Candidate download links, best first.
+
+    Ranked rather than merged, because the ranking is the safety property: a
+    mirror's app page carries adverts for *other* apps, and those adverts are
+    often better-formed file links than the real target. Following one produces
+    a confident report about the wrong software, which is worse than failing.
+    """
     ordered: list[str] = []
-    for pattern in (FILE_LINK, DOWNLOAD_LINK):
+
+    def add(url: str, *, strict: bool = False) -> None:
+        absolute = urllib.parse.urljoin(base_url, url_unescape(url))
+        if not absolute.startswith(("http://", "https://")) or not _has_path(absolute):
+            return
+        # A candidate naming a package the user did not ask for is an advert for
+        # another app. Reject it even when it also mentions the wanted package —
+        # mirrors pass the referring app along in a query parameter.
+        if wanted and package_ids_in(absolute) - wanted:
+            return
+        if strict and not _looks_like_download_target(absolute, wanted):
+            return
+        if absolute not in ordered:
+            ordered.append(absolute)
+
+    for match in NAMED_DOWNLOAD_LINK.finditer(html):
+        add(match.group(1) or match.group(2), strict=True)
+    for pattern in (FILE_LINK, DOWNLOAD_HOST_LINK, DOWNLOAD_LINK):
         for match in pattern.finditer(html):
-            absolute = urllib.parse.urljoin(base_url, match.group(1))
-            if absolute not in ordered:
-                ordered.append(absolute)
+            add(match.group(1))
+
     return ordered
 
 
@@ -181,6 +281,9 @@ def _open_file(url: str):
     """Open ``url``, following mirror landing pages until a real file appears."""
     visited: list[str] = []
     current = url
+    # What the user asked for. Every hop is checked against this so a page's
+    # adverts for other apps can never divert the download.
+    wanted = package_ids_in(url)
 
     for _ in range(MAX_PAGE_HOPS + 1):
         response = _open(current)
@@ -194,10 +297,23 @@ def _open_file(url: str):
         visited.append(current)
         visited.append(page_url)
 
-        candidates = [link for link in _page_links(html, page_url) if link not in visited]
+        if not wanted:
+            wanted = infer_wanted(html)
+            if wanted:
+                console.note(
+                    f"this page is about {next(iter(wanted))}; "
+                    "links to other apps will be ignored"
+                )
+
+        candidates = [
+            link
+            for link in _page_links(html, page_url, wanted=wanted)
+            if link not in visited
+        ]
         if not candidates:
             raise AcquisitionError(
-                f"{page_url} is a web page and no download link could be found on it",
+                f"{page_url} is a web page and no download link for this app could be "
+                "found on it",
                 hint=(
                     "open the page in a browser, start the download, then copy the "
                     "direct file URL and pass that instead"
