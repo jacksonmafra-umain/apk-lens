@@ -57,6 +57,8 @@ def _ripgrep_lines(pattern: str, roots: Sequence[Path], executable: str) -> Iter
         executable,
         "--no-messages",
         "--no-heading",
+        # Without this, ripgrep omits the path when handed a single file.
+        "--with-filename",
         "--line-number",
         "--text",
         "--ignore-case",
