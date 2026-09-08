@@ -72,6 +72,9 @@ mismatch means the mirror repackaged it.
 **From Google Play** — Play does not hand you the file; use a tool that
 reconstructs the bundle for an account you own. Same verification caveat.
 
+All three routes in detail, with a worked mirror example, version pinning and
+certificate comparison: [getting an APK](getting-an-apk.md).
+
 ## 4. Analyse it
 
 ```bash
