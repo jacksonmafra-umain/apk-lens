@@ -7,13 +7,14 @@ order a run goes through them.
 
 from __future__ import annotations
 
-from apk_lens.commands import acquire, doctor, unpack
+from apk_lens.commands import acquire, doctor, manifest, unpack
 from apk_lens.commands.base import CommandSpec
 
 COMMANDS: tuple[CommandSpec, ...] = (
     doctor.SPEC,
     acquire.SPEC,
     unpack.SPEC,
+    manifest.SPEC,
 )
 
 __all__ = ["COMMANDS", "CommandSpec"]

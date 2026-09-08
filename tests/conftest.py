@@ -13,8 +13,68 @@ from pathlib import Path
 
 import pytest
 
-MINIMAL_MANIFEST_XML = b"\x03\x00\x08\x00fake-binary-axml"
+from axml_builder import BOOL, INT, Attr, Node, encode
+
 MINIMAL_DEX = b"dex\n035\x00" + b"\x00" * 32
+
+
+def manifest_node(
+    package: str = "com.example.demo",
+    permissions: tuple[str, ...] = (
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.CAMERA",
+    ),
+    queries: tuple[str, ...] = ("com.example.other", "com.example.rival"),
+) -> Node:
+    """A manifest with enough shape to exercise every extractor."""
+    return Node(
+        "manifest",
+        [
+            Attr("package", package, android=False),
+            Attr("versionCode", 100, INT),
+            Attr("versionName", "1.0"),
+        ],
+        [
+            Node("uses-sdk", [Attr("minSdkVersion", 24, INT), Attr("targetSdkVersion", 34, INT)]),
+            *[Node("uses-permission", [Attr("name", name)]) for name in permissions],
+            Node("permission", [Attr("name", f"{package}.permission.CUSTOM")]),
+            Node(
+                "queries",
+                [],
+                [Node("package", [Attr("name", name)]) for name in queries],
+            ),
+            Node(
+                "application",
+                [
+                    Attr("label", "Demo"),
+                    Attr("usesCleartextTraffic", True, BOOL),
+                    Attr("allowBackup", True, BOOL),
+                ],
+                [
+                    Node("activity", [Attr("name", ".MainActivity"), Attr("exported", True, BOOL)]),
+                    Node("service", [Attr("name", ".SyncService"), Attr("exported", False, BOOL)]),
+                    Node(
+                        "provider",
+                        [
+                            Attr("name", ".ShareProvider"),
+                            Attr("authorities", f"{package}.share"),
+                            Attr("exported", True, BOOL),
+                        ],
+                    ),
+                    Node(
+                        "receiver",
+                        [Attr("name", ".BootReceiver"), Attr("exported", True, BOOL)],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+def manifest_bytes(**kwargs) -> bytes:
+    return encode(manifest_node(**kwargs))
 
 
 def _write_zip(target: Path, members: dict[str, bytes]) -> Path:
@@ -29,7 +89,7 @@ def build_apk(
     target: Path, *, package: str = "com.example.demo", extra: dict | None = None
 ) -> Path:
     members = {
-        "AndroidManifest.xml": MINIMAL_MANIFEST_XML,
+        "AndroidManifest.xml": manifest_bytes(package=package),
         "classes.dex": MINIMAL_DEX + f"https://api.{package}.example/v1".encode(),
         "resources.arsc": b"\x02\x00\x0c\x00resources",
         "META-INF/MANIFEST.MF": b"Manifest-Version: 1.0\n",
@@ -49,7 +109,7 @@ def xapk_file(tmp_path: Path) -> Path:
     abi_split = _write_zip(
         tmp_path / "staging" / "config.arm64_v8a.apk",
         {
-            "AndroidManifest.xml": MINIMAL_MANIFEST_XML,
+            "AndroidManifest.xml": manifest_bytes(),
             "lib/arm64-v8a/libdemo.so": b"\x7fELF" + b"telemetry.example.com\x00" * 4,
         },
     )
