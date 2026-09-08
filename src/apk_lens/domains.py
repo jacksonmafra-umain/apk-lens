@@ -20,6 +20,7 @@ from apk_lens.catalog import CATALOG_DIR
 SUFFIX_FILE = CATALOG_DIR / "public_suffixes.txt"
 
 HOSTNAME = re.compile(r"^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$")
+CANDIDATE = re.compile(r"(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.){1,6}[a-z]{2,24}", re.I)
 
 
 @cache
@@ -84,3 +85,19 @@ def labels_of(domain: str) -> list[str]:
     """The name parts of a domain, minus its public suffix."""
     suffix_parts = registrable_domain(domain).split(".")[1:]
     return [part for part in domain.split(".") if part and part not in suffix_parts]
+
+
+def find_hostnames(text: str) -> list[str]:
+    """Pull hostnames out of a longer string.
+
+    Needed because a `strings` sweep returns runs, not fields: a URL can arrive
+    glued to a log format or to a neighbouring literal, and requiring the whole
+    run to *be* a hostname would miss it.
+    """
+    return sorted(
+        {
+            match.group().lower()
+            for match in CANDIDATE.finditer(text)
+            if is_hostname(match.group())
+        }
+    )
