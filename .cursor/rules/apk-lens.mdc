@@ -1,0 +1,12 @@
+---
+description: How to work in apk-lens, and how to run an app analysis
+alwaysApply: true
+---
+
+The instructions for this repository live in `AGENTS.md` at the repository root.
+
+Read it before running an analysis or changing code. It covers the pipeline, the
+commands, the rules every finding is held to, the code layout, and the things
+this tool cannot establish.
+
+Kept as a pointer rather than a copy so the two cannot drift apart.
