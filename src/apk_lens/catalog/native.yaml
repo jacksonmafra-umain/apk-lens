@@ -1,0 +1,120 @@
+# Markers for the native side of an app.
+#
+# This catalog exists to measure a blind spot, not to accuse. Native code is
+# compiled machine code: a `strings` sweep reads its literals, but nothing here
+# disassembles it, so the *logic* is genuinely unread. Say that plainly, then
+# report what the literals do reveal.
+#
+# Note the wording of every `meaning` below: none of them assert intent. A
+# fingerprinting library in an app is a fact; why it is there is not something
+# static analysis can answer.
+version: 1
+
+# Above this, a single library is worth calling out: it is either a whole
+# runtime, a media codec, or something doing a lot of work out of sight.
+large_library_bytes: 2097152
+
+crypto_libraries:
+  - pattern: boringssl|BoringSSL
+    name: BoringSSL
+    meaning: TLS and general cryptography. Extremely common; not itself notable.
+  - pattern: openssl|OpenSSL
+    name: OpenSSL
+    meaning: TLS and general cryptography.
+  - pattern: mbedtls|MbedTLS
+    name: mbedTLS
+    meaning: A small TLS stack, common in embedded and game code.
+  - pattern: curve25519|ed25519|x25519
+    name: Curve25519
+    meaning: Modern public-key cryptography, often used to sign or seal payloads.
+  - pattern: chacha20|poly1305
+    name: ChaCha20-Poly1305
+    meaning: An authenticated cipher, common for sealing request bodies.
+  - pattern: AES_set_encrypt_key|aes_encrypt|EVP_aes
+    name: AES
+    meaning: Symmetric encryption. Says nothing on its own about what is encrypted.
+
+integrity_markers:
+  - pattern: ptrace
+    name: ptrace
+    meaning: >
+      Used both to attach a debugger and to stop one attaching. Its presence in a
+      library usually means anti-debugging, which also makes the library harder to audit.
+  - pattern: /proc/self/maps|/proc/self/status
+    name: process self-inspection
+    meaning: >
+      Reading the process's own memory map. Typical of tamper detection, and also
+      of emulator detection.
+  - pattern: TracerPid
+    name: TracerPid check
+    meaning: A direct check for whether a debugger is attached.
+  - pattern: dlopen|dlsym
+    name: dynamic symbol loading
+    meaning: >
+      Resolving functions at runtime. Legitimate and widespread, but it also means
+      the call graph is not fully visible in the binary.
+  - pattern: SafetyNet|PlayIntegrity|DroidGuard
+    name: platform attestation
+    meaning: Asking Google whether the device and app look genuine.
+  - pattern: frida|xposed|substrate
+    name: instrumentation detection
+    meaning: >
+      Looking for the tools researchers use to inspect apps. Anti-fraud in intent,
+      and an obstacle to independent verification either way.
+
+fingerprint_markers:
+  - pattern: fingerprint|deviceid|device_id|udid|openudid
+    name: device identity
+    meaning: >
+      Names suggesting the library assembles a device identifier. Because it is native,
+      exactly which fields go into it cannot be read from the binary's strings.
+  - pattern: sensor|accelerometer|gyroscope
+    name: sensor access
+    meaning: Sensor names in native code, which can be used for motion-based fingerprinting.
+  - pattern: emulator|qemu|goldfish|genymotion
+    name: emulator detection
+    meaning: Checks for whether the app is running in a virtual device.
+
+# Library filename fragments that identify what a big .so actually is, so a
+# 40 MB file is not reported as a mystery when it is a known runtime.
+known_libraries:
+  - pattern: libflutter
+    name: Flutter engine
+  - pattern: libhermes|libreactnative|libjsc
+    name: React Native runtime
+  - pattern: libil2cpp|libunity
+    name: Unity engine
+  - pattern: libmonosgen|libmono
+    name: Mono runtime
+  - pattern: libtensorflow|libtflite|libpytorch
+    name: On-device machine learning runtime
+  - pattern: libavcodec|libavformat|libffmpeg
+    name: FFmpeg media codecs
+  - pattern: libwebp|libjpeg|libpng|libavif
+    name: Image codec
+  - pattern: libopus|libvpx|libdav1d
+    name: Audio or video codec
+  - pattern: libsqlite|librealm
+    name: Embedded database
+  - pattern: libcrashlytics|libbreakpad|libcrashsdk
+    name: Native crash reporter
+  - pattern: libtmxprofiling
+    name: Device-fingerprinting SDK
+  - pattern: libjingle|libwebrtc
+    name: WebRTC real-time media
+
+# Obfuscated-asset decoding. Assets are where endpoint lists and feature flags
+# hide when an app would rather they were not readable.
+asset_decoding:
+  # A candidate is kept only if the decoded bytes are mostly printable and
+  # contain one of these, so brute force does not produce 256 files of noise.
+  interesting_markers:
+    - "http"
+    - "https://"
+    - '"{'
+    - "{\""
+    - "endpoint"
+    - "api_"
+    - "host"
+  min_printable_ratio: 0.85
+  max_asset_bytes: 4194304
