@@ -20,7 +20,8 @@ PROMPTS = sorted((ROOT / "prompts").glob("*.md"))
 MARKDOWN = [ROOT / "README.md", ROOT / "AGENTS.md", ROOT / "CONTRIBUTING.md", *DOCS, *PROMPTS]
 
 LINK = re.compile(r"\[[^\]]+\]\(([^)#\s]+)(?:#[^)]*)?\)")
-COMMAND_MENTION = re.compile(r"apk-lens ([a-z-]+)")
+# A leading hyphen means a flag, not a command: `apk-lens --version`.
+COMMAND_MENTION = re.compile(r"apk-lens ([a-z][a-z-]*)")
 FLAG_MENTION = re.compile(r"`(--[a-z0-9-]+)")
 
 KNOWN_COMMANDS = {spec.name for spec in COMMANDS}
@@ -49,6 +50,7 @@ def test_the_documentation_set_is_present():
     expected = {
         "README.md",
         "getting-started.md",
+        "installing-the-skills.md",
         "how-it-works.md",
         "interpreting-results.md",
         "limits-and-ethics.md",

@@ -39,6 +39,10 @@ to read first, and the rules a finding is held to. There is a
 `/analyze-apk` command in the box, and a
 [worked session](docs/example-session.md) showing exactly what happens.
 
+Inside the clone there is nothing to install. To use the skill in **other**
+projects too, see
+[installing the skills](docs/installing-the-skills.md).
+
 Working in a plain chat window instead? [`prompts/`](prompts/) has nine
 ready-to-paste prompts, and `apk-lens prompts 00` prints one complete.
 
@@ -119,6 +123,7 @@ TLS-intercepting proxy and API hooks. See
 | | |
 |---|---|
 | [Getting started](docs/getting-started.md) | install, first analysis, every command |
+| [Installing the skills](docs/installing-the-skills.md) | make the agent path work in any project |
 | [How it works](docs/how-it-works.md) | the pipeline stage by stage, and why each exists |
 | [Interpreting results](docs/interpreting-results.md) | how to read a report without over-reading it |
 | [Limits and ethics](docs/limits-and-ethics.md) | what static analysis cannot prove, and the rules of the road |
