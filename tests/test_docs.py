@@ -50,6 +50,7 @@ def test_the_documentation_set_is_present():
     expected = {
         "README.md",
         "getting-started.md",
+        "getting-an-apk.md",
         "installing-the-skills.md",
         "how-it-works.md",
         "interpreting-results.md",

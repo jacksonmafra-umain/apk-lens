@@ -57,6 +57,16 @@ apk-lens analyze <apk-path-or-url> --category social --depth full
 `doctor` tells you what tooling you have and what each missing piece costs. You
 need nothing installed for a first pass; `jadx` buys you `file:line` evidence.
 
+`<apk-path-or-url>` accepts a mirror app page directly — it resolves the page to
+the file, and refuses to follow an advert for a different app:
+
+```bash
+apk-lens analyze "https://apkpure.com/accessy/com.axessions.app" --category utility
+```
+
+More routes, including `adb` from your own device:
+[getting an APK](docs/getting-an-apk.md).
+
 Full command reference: [`docs/getting-started.md`](docs/getting-started.md).
 
 ## What you get
@@ -124,6 +134,7 @@ TLS-intercepting proxy and API hooks. See
 |---|---|
 | [Getting started](docs/getting-started.md) | install, first analysis, every command |
 | [Installing the skills](docs/installing-the-skills.md) | make the agent path work in any project |
+| [Getting an APK](docs/getting-an-apk.md) | mirror URL, `adb` from your own device, verifying the file |
 | [How it works](docs/how-it-works.md) | the pipeline stage by stage, and why each exists |
 | [Interpreting results](docs/interpreting-results.md) | how to read a report without over-reading it |
 | [Limits and ethics](docs/limits-and-ethics.md) | what static analysis cannot prove, and the rules of the road |
