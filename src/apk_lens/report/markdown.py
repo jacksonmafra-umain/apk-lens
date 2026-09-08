@@ -42,3 +42,9 @@ def quote(text: str) -> str:
 
 def section(title: str, body: str, level: int = 2) -> str:
     return f"{'#' * level} {title}\n\n{body.rstrip()}\n\n"
+
+
+def plural(count: int, singular: str, many: str | None = None) -> str:
+    """``1 domain`` / ``4 domains`` — generated prose still has to read like prose."""
+    word = singular if count == 1 else (many or f"{singular}s")
+    return f"{count:,} {word}"

@@ -58,14 +58,19 @@ def _readme(result: AnalysisResult) -> str:
     notable = counts.get(permissions_scan.NOTABLE, 0)
     unattributed = (network.get("counts") or {}).get(network_scan.UNATTRIBUTED, 0)
 
+    third_party = (network.get("counts") or {}).get(network_scan.THIRD_PARTY, 0)
+    first_party = (network.get("counts") or {}).get(network_scan.FIRST_PARTY, 0)
+    present = sinks.get("sinks_present", 0)
+    catalogued = present + sinks.get("sinks_absent", 0)
+
     built_to = [
-        f"reach {(network.get('counts') or {}).get(network_scan.THIRD_PARTY, 0)} "
-        "domains belonging to vendors the catalog recognises, and "
-        f"{(network.get('counts') or {}).get(network_scan.FIRST_PARTY, 0)} of its own",
-        f"use {sinks.get('sinks_present', 0)} of the "
-        f"{sinks.get('sinks_present', 0) + sinks.get('sinks_absent', 0)} sensitive "
-        "Android APIs this tool looks for",
-        f"ship code from {len(sdk_findings)} identifiable third parties",
+        f"reach {md.plural(third_party, 'domain')} belonging to vendors the catalog "
+        f"recognises, and {first_party} of its own",
+        f"use {present} of the {catalogued} sensitive Android APIs this tool looks for",
+        "ship code from "
+        + md.plural(
+            len(sdk_findings), "identifiable third party", "identifiable third parties"
+        ),
     ]
 
     body = md.section(
@@ -85,10 +90,10 @@ def _readme(result: AnalysisResult) -> str:
         "What stands out",
         md.bullets(
             [
-                f"{hard} permissions are hard to justify for this kind of app, and "
-                f"{notable} more are notable",
-                f"{unattributed} endpoint domains could not be attributed to any known "
-                "operator — these are the highest-value thing for a human to review",
+                f"{md.plural(hard, 'permission')} hard to justify for this kind of app, "
+                f"and {notable} more notable",
+                f"{md.plural(unattributed, 'endpoint domain')} could not be attributed to "
+                "any known operator — the highest-value thing for a human to review",
                 result.native.get("opacity_statement", "No native code was examined."),
             ]
         ),
@@ -698,7 +703,9 @@ def _assessment(result: AnalysisResult) -> str:
     sdk_findings = result.sdks.get("findings", [])
 
     supported = [
-        f"The app declares {len(result.manifest.get('permissions', []))} permissions; "
+        "The app declares "
+        + md.plural(len(result.manifest.get("permissions", [])), "permission")
+        + "; "
         f"{permissions.get(permissions_scan.HARD_TO_JUSTIFY, 0)} are hard to justify for "
         f"a {result.category} app and {permissions.get(permissions_scan.NOTABLE, 0)} are "
         "notable.",
@@ -708,7 +715,11 @@ def _assessment(result: AnalysisResult) -> str:
         f"{network_counts.get(network_scan.THIRD_PARTY, 0)} belong to recognised vendors.",
         f"It references {sink_counts.get('sinks_present', 0)} sensitive Android APIs and "
         f"none of the other {sink_counts.get('sinks_absent', 0)} in the catalog.",
-        f"It ships code from {len(sdk_findings)} identifiable third parties.",
+        "It ships code from "
+        + md.plural(
+            len(sdk_findings), "identifiable third party", "identifiable third parties"
+        )
+        + ".",
     ]
 
     unsupported = [
