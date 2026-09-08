@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from apk_lens.commands import (
     acquire,
+    analyze,
     corpus,
     doctor,
     manifest,
@@ -22,6 +23,7 @@ from apk_lens.commands import (
 from apk_lens.commands.base import CommandSpec
 
 COMMANDS: tuple[CommandSpec, ...] = (
+    analyze.SPEC,
     doctor.SPEC,
     acquire.SPEC,
     unpack.SPEC,
