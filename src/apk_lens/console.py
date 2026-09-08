@@ -49,11 +49,16 @@ def info(message: str) -> None:
 
 
 def step(message: str) -> None:
-    """Progress narration. Goes to stderr so `--json` output stays clean."""
-    print(style("::", "cyan"), style(message, "bold"), file=sys.stderr)
+    """A section heading: part of the readable report, so stdout.
+
+    Machine-readable commands return before any heading is printed, which is
+    what keeps `--json` output clean.
+    """
+    print(style("::", "cyan"), style(message, "bold"))
 
 
 def note(message: str) -> None:
+    """Narration and caveats. Stderr, so piping stdout stays parseable."""
     print(style(f"   {message}", "dim"), file=sys.stderr)
 
 
