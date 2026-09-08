@@ -15,6 +15,11 @@ When you get that, run the pipeline below and write up what the evidence
 supports. Do not ask what they want first — produce the report, then offer to go
 deeper on any part of it.
 
+If the user asks how to install any of this outside the repository, point them
+at `docs/installing-the-skills.md` — and note the trap it covers: a user-level
+skill still needs `apk-lens` on `PATH`, which a repository virtualenv does not
+provide.
+
 ## Run it
 
 ```sh

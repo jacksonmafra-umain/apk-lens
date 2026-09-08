@@ -3,6 +3,7 @@
 | | |
 |---|---|
 | [Getting started](getting-started.md) | install, get an app, first analysis, every command |
+| [Installing the skills](installing-the-skills.md) | the agent path: in this clone, and in every other project |
 | [How it works](how-it-works.md) | the pipeline stage by stage, and why each stage exists |
 | [Interpreting results](interpreting-results.md) | how to read a report without over-reading it |
 | [Limits and ethics](limits-and-ethics.md) | what static analysis cannot prove, and the rules of the road |
