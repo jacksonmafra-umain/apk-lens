@@ -273,5 +273,62 @@ def unpack(
         workspace.members.append(_harvest_apk(apk_path, apk_path.stem, root, workspace))
 
     workspace.members.sort(key=lambda member: (member.role != BASE, member.name))
+
+    base = next((member for member in workspace.members if member.role == BASE), None)
+    if workspace.members:
+        workspace.signing = read_signing((base or workspace.members[0]).file)
+
     inventory.write_text(json.dumps(workspace.to_dict(), indent=2) + "\n")
     return workspace
+
+
+SIGNER_DIGEST = re.compile(
+    r"Signer #(\d+) certificate SHA-256 digest:\s*([0-9a-f]{64})", re.I
+)
+SIGNER_SUBJECT = re.compile(r"Signer #(\d+) certificate DN:\s*(.+)")
+
+
+def read_signing(apk_path: Path) -> dict | None:
+    """Report the signing certificate, when ``apksigner`` is installed.
+
+    Worth doing even though it is optional: comparing this digest against the
+    copy of the app on your own device is the cheapest way to tell whether a
+    mirror handed you the real build or a repackaged one.
+    """
+    import subprocess
+
+    from apk_lens import tools
+
+    status = tools.find("apksigner")
+    if not status.found:
+        return None
+
+    try:
+        completed = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            [status.path, "verify", "--print-certs", str(apk_path)],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as failure:
+        console.warn(f"apksigner failed: {failure}")
+        return None
+
+    banner = f"{completed.stdout}\n{completed.stderr}"
+    digests = dict(SIGNER_DIGEST.findall(banner))
+    subjects = {index: subject.strip() for index, subject in SIGNER_SUBJECT.findall(banner)}
+    if not digests:
+        return {"verified": False, "detail": banner.strip().splitlines()[:3]}
+
+    return {
+        "verified": completed.returncode == 0,
+        "signers": [
+            {"index": int(index), "sha256": digest, "subject": subjects.get(index)}
+            for index, digest in sorted(digests.items())
+        ],
+        "compare_with": (
+            "adb shell pm path <package>, pull the base APK, and run the same "
+            "command on it: matching digests mean the mirror did not repackage the app"
+        ),
+    }
