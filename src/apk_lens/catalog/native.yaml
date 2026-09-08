@@ -108,13 +108,16 @@ known_libraries:
 asset_decoding:
   # A candidate is kept only if the decoded bytes are mostly printable and
   # contain one of these, so brute force does not produce 256 files of noise.
+  # Short markers are deliberately avoided: a two-character sequence turns up by
+  # chance under some XOR key for almost any input.
   interesting_markers:
-    - "http"
+    - "http://"
     - "https://"
-    - '"{'
-    - "{\""
     - "endpoint"
-    - "api_"
-    - "host"
-  min_printable_ratio: 0.85
+    - "api_key"
+    - '"host"'
+    - '"url"'
+    - '{"'
+    - "<?xml"
+  min_printable_ratio: 0.95
   max_asset_bytes: 4194304
