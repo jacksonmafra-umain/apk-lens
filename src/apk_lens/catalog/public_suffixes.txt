@@ -78,6 +78,34 @@ help
 wiki
 blog
 
+# free or low-cost TLDs that show up disproportionately in abuse research:
+# worth resolving rather than silently skipping
+tk
+ml
+ga
+cf
+gq
+pw
+su
+top
+vip
+icu
+buzz
+cyou
+sbs
+cfd
+lol
+monster
+quest
+casa
+work
+win
+download
+stream
+review
+loan
+party
+
 # country-code, single label
 ar
 at
