@@ -25,6 +25,11 @@ from apk_lens import catalog, domains, strings
 
 MARKER_SECTIONS = ("crypto_libraries", "integrity_markers", "fingerprint_markers")
 
+# Lower than the floor used for string *dumps*: several of the markers that matter
+# most are short symbol names — `ptrace`, `dlopen`, `qemu`, `frida` — and an
+# eight-character minimum drops every one of them.
+MARKER_MIN_LENGTH = 4
+
 
 @dataclass
 class NativeLibrary:
@@ -154,7 +159,7 @@ def scan(workspace, *, max_hosts_per_library: int = 25) -> NativeReport:
         size = path.stat().st_size
         report.native_bytes += size
 
-        values = list(strings.iter_strings(path, strings.NATIVE_MIN_LENGTH))
+        values = list(strings.iter_strings(path, MARKER_MIN_LENGTH))
         hosts: set[str] = set()
         for value in values:
             hosts.update(domains.find_hostnames(value))
