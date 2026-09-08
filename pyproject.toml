@@ -37,6 +37,11 @@ apk-lens = "apk_lens.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/apk_lens"]
 
+# The prompt library lives at the repository root, where a person looking for it
+# will find it, and is packaged so `apk-lens prompts` works from a wheel too.
+[tool.hatch.build.targets.wheel.force-include]
+"prompts" = "apk_lens/prompt_files"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
