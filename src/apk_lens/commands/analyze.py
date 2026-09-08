@@ -20,6 +20,12 @@ from apk_lens.scan import network as network_scan
 from apk_lens.scan import permissions as permissions_scan
 
 
+def _category_note(category: str) -> str:
+    if category == permissions_scan.UNKNOWN_CATEGORY:
+        return "no app category given — pass --category to judge these in context"
+    return f"judged as a {category} app"
+
+
 def _headline_rows(result: AnalysisResult) -> list[tuple[str, str, str]]:
     permissions = result.permissions.get("counts", {})
     network = result.network.get("counts", {})
@@ -34,7 +40,7 @@ def _headline_rows(result: AnalysisResult) -> list[tuple[str, str, str]]:
         (
             "permissions",
             f"{len(result.manifest.get('permissions', []))} requested, {hard} hard to justify",
-            f"judged as a {result.category} app",
+            _category_note(result.category),
         ),
         (
             "endpoints",

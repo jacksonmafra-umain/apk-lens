@@ -136,3 +136,24 @@ def test_invalid_json_is_reported_with_a_hint(tmp_path: Path):
     junk.write_text("{not json")
     with pytest.raises(ApkLensError, match="not valid JSON"):
         load(junk)
+
+
+def test_a_missing_category_is_called_out_rather_than_read_as_a_verdict(
+    xapk_file: Path, tmp_path: Path, capsys
+):
+    """"judged as a unknown app" is both bad grammar and a misleading claim."""
+    main(
+        [
+            "analyze",
+            str(xapk_file),
+            "--work-dir",
+            str(tmp_path / "work"),
+            "--apks-dir",
+            str(tmp_path / "apks"),
+            "--out",
+            str(tmp_path / "reports"),
+        ]
+    )
+    assert "no app category given" in capsys.readouterr().out
+    readme = (tmp_path / "reports" / "com.example.demo-1.0" / "README.md").read_text()
+    assert "No app category was given" in readme
