@@ -87,8 +87,10 @@ class NativeReport:
                 "without its ABI split, native code exists but was not present here."
             )
         share = round(self.native_share * 100)
+        count = len(self.libraries)
+        noun = "native library" if count == 1 else "native libraries"
         return (
-            f"{len(self.libraries)} native libraries totalling "
+            f"{count} {noun} totalling "
             f"{self.native_bytes / 1024 / 1024:.0f} MB — about {share}% of the app's "
             "code by size — were read as text only. Their behaviour was not "
             "disassembled or executed, so any logic inside them is unverified by "
