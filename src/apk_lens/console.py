@@ -57,6 +57,12 @@ def step(message: str) -> None:
     print(style("::", "cyan"), style(message, "bold"))
 
 
+def stage(message: str) -> None:
+    """Pipeline progress. Stderr: a long run should narrate without polluting
+    a `--json` stdout."""
+    print(style("::", "cyan"), style(message, "bold"), file=sys.stderr)
+
+
 def note(message: str) -> None:
     """Narration and caveats. Stderr, so piping stdout stays parseable."""
     print(style(f"   {message}", "dim"), file=sys.stderr)

@@ -76,18 +76,24 @@ def analyse(
 ) -> AnalysisResult:
     """Run the whole pipeline over ``source`` and return the collected result."""
     result = AnalysisResult(category=category)
-    state: dict[str, Path | None] = {"root": None}
+    # The first stage finishes before the workspace path is known, so timings are
+    # buffered until there is somewhere to write them.
+    root: list[Path] = []
+    pending: list[tuple[str, float]] = []
 
     @contextmanager
     def stage(name: str, message: str):
-        console.step(message)
+        console.stage(message)
         started = time.monotonic()
         yield
         elapsed = time.monotonic() - started
         console.note(f"{name} took {elapsed:.1f}s")
         result.stages_run.append(name)
-        if state["root"] is not None:
-            _record(state["root"], name, elapsed)
+        pending.append((name, elapsed))
+        if root:
+            for stage_name, seconds in pending:
+                _record(root[0], stage_name, seconds)
+            pending.clear()
 
     with stage("acquire", "acquiring the bundle"):
         provenance = acquire.acquire(
@@ -101,7 +107,7 @@ def analyse(
     with stage("unpack", "unpacking splits"):
         workspace = unpack.unpack(provenance, work_dir or unpack.DEFAULT_WORK_DIR, force=force)
         result.workspace = workspace.to_dict()
-        state["root"] = workspace.path
+        root.append(workspace.path)
 
     with stage("manifest", "reading the manifest"):
         if workspace.base_manifest is None:

@@ -111,10 +111,10 @@ def test_prose_is_pluralised(rendered):
     assert "1 identifiable third party" in readme or "identifiable third parties" in readme
 
 
-def test_report_command_writes_the_set(xapk_file: Path, tmp_path: Path, capsys):
+def test_analyze_command_writes_the_set(xapk_file: Path, tmp_path: Path, capsys):
     exit_code = main(
         [
-            "report",
+            "analyze",
             str(xapk_file),
             "--work-dir",
             str(tmp_path / "work"),
@@ -127,5 +127,7 @@ def test_report_command_writes_the_set(xapk_file: Path, tmp_path: Path, capsys):
         ]
     )
     assert exit_code == 0
-    assert "Report written" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "com.example.demo 1.0" in out
+    assert "Before you quote any of it" in out
     assert (tmp_path / "reports" / "com.example.demo-1.0" / "README.md").exists()

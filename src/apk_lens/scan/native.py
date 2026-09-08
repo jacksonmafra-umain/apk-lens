@@ -89,12 +89,13 @@ class NativeReport:
         share = round(self.native_share * 100)
         count = len(self.libraries)
         noun = "native library" if count == 1 else "native libraries"
+        verb, pronoun = ("was", "Its") if count == 1 else ("were", "Their")
         return (
             f"{count} {noun} totalling "
             f"{self.native_bytes / 1024 / 1024:.0f} MB — about {share}% of the app's "
-            "code by size — were read as text only. Their behaviour was not "
-            "disassembled or executed, so any logic inside them is unverified by "
-            "this report. That is the single largest gap in the analysis."
+            f"code by size — {verb} read as text only. {pronoun} behaviour was not "
+            "disassembled or executed, so any logic inside is unverified by this "
+            "report. That is the single largest gap in the analysis."
         )
 
     def to_dict(self) -> dict:

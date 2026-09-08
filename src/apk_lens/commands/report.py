@@ -1,4 +1,10 @@
-"""``apk-lens report`` — run every stage and write the report set."""
+"""``apk-lens report`` — re-render a report set from a previous run.
+
+Rendering is separate from analysis on purpose. The expensive part is reading
+the app; turning a `results.json` back into documents costs nothing, so a
+changed template, a different output directory, or a re-read of an old run does
+not mean decompiling anything again.
+"""
 
 from __future__ import annotations
 
@@ -6,77 +12,85 @@ import argparse
 import json
 from pathlib import Path
 
-from apk_lens import console, pipeline
+from apk_lens import console
 from apk_lens import report as report_stage
-from apk_lens.commands.base import CommandSpec, add_depth_arguments, add_input_arguments
-from apk_lens.scan import permissions as permissions_scan
+from apk_lens.commands.base import CommandSpec
+from apk_lens.errors import ApkLensError
+from apk_lens.results import AnalysisResult
+
+RESULT_SECTIONS = (
+    "provenance",
+    "workspace",
+    "corpus",
+    "manifest",
+    "permissions",
+    "network",
+    "sinks",
+    "sdks",
+    "native",
+)
+
+
+def load(path: Path) -> AnalysisResult:
+    """Rebuild an :class:`AnalysisResult` from a ``results.json`` file."""
+    try:
+        payload = json.loads(path.read_text())
+    except OSError as failure:
+        raise ApkLensError(f"could not read {path}: {failure}") from failure
+    except ValueError as failure:
+        raise ApkLensError(
+            f"{path} is not valid JSON: {failure}",
+            hint="pass the results.json written by `apk-lens analyze`",
+        ) from failure
+
+    if "app" not in payload or "provenance" not in payload:
+        raise ApkLensError(
+            f"{path} does not look like an apk-lens result",
+            hint="expected the results.json written next to a report set",
+        )
+
+    app = payload.get("app", {})
+    return AnalysisResult(
+        category=app.get("category_assumed", "unknown"),
+        stages_run=payload.get("stages_run", []),
+        generated_at=payload.get("generated_at", ""),
+        tool_version=payload.get("tool", {}).get("version", ""),
+        **{section: payload.get(section) or {} for section in RESULT_SECTIONS},
+    )
 
 
 def run(args: argparse.Namespace) -> int:
-    result = pipeline.analyse(
-        args.source,
-        apks_dir=Path(args.apks_dir),
-        work_dir=Path(args.work_dir),
-        depth=args.depth,
-        category=args.category,
-        max_bytes=int(args.max_size * 1024 * 1024),
-        threads=args.threads,
-        timeout=args.timeout,
-        force=args.force,
-        skip_native=args.no_native,
-    )
-
+    result = load(Path(args.results))
     produced = report_stage.write(result, Path(args.out))
 
-    if args.json:
-        print(json.dumps(result.to_dict(), indent=2))
-        return 0
-
-    console.step("Report written")
+    console.step("Report re-rendered")
     print(
         console.render_table(
             ("output", "path"),
             [
-                ("start here", str(produced.readme)),
+                ("read this first", str(produced.readme)),
                 ("documents", f"{len(produced.documents)} files in {produced.root}"),
-                ("evidence", f"{len(produced.evidence)} files in {produced.root / 'evidence'}"),
-                ("machine-readable", str(produced.results_json)),
+                ("evidence", f"{len(produced.evidence)} files"),
             ],
         )
     )
-    print()
-    console.step("Before you quote any of it")
-    for line in result.limits():
-        console.info(f"  - {line}")
+    console.note(f"source run: {result.generated_at} with apk-lens {result.tool_version}")
     return 0
 
 
 def register(parser: argparse.ArgumentParser) -> None:
-    add_input_arguments(parser)
-    add_depth_arguments(parser)
-    parser.add_argument(
-        "--category",
-        default=permissions_scan.UNKNOWN_CATEGORY,
-        choices=permissions_scan.categories(),
-        help="what kind of app this is, so permissions are judged in context",
-    )
+    parser.add_argument("results", help="path to a results.json from a previous analysis")
     parser.add_argument(
         "--out",
         default=str(report_stage.DEFAULT_OUT_DIR),
         metavar="DIR",
-        help="where the report set is written (default: %(default)s, git-ignored)",
+        help="where to write the report set (default: %(default)s)",
     )
-    parser.add_argument(
-        "--no-native",
-        action="store_true",
-        help="skip the native library pass",
-    )
-    parser.add_argument("--json", action="store_true", help="also print results.json to stdout")
     parser.set_defaults(func=run)
 
 
 SPEC = CommandSpec(
     name="report",
-    help="Run the full analysis and write the Markdown report set",
+    help="Re-render the report set from a previous run's results.json",
     register=register,
 )
