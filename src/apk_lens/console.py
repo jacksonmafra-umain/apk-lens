@@ -92,3 +92,18 @@ def timed(message: str) -> Iterator[None]:
         yield
     finally:
         note(f"took {time.monotonic() - started:.1f}s")
+
+
+def progress(done: int, total: int, *, final: bool = False) -> None:
+    """Single-line transfer progress; silent when output is not a terminal."""
+    if not color_enabled():
+        if final:
+            print(f"   {done / 1024 / 1024:.1f} MB")
+        return
+    if total:
+        pct = min(100, int(done * 100 / total))
+        line = f"   {done / 1024 / 1024:7.1f} MB / {total / 1024 / 1024:.1f} MB  {pct:3d}%"
+    else:
+        line = f"   {done / 1024 / 1024:7.1f} MB"
+    end = "\n" if final else ""
+    print(f"\r{line}", end=end, flush=True)

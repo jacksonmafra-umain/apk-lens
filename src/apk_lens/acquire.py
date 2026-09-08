@@ -14,15 +14,28 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from apk_lens import bundles, console
+from apk_lens import __version__, bundles, console
 from apk_lens.errors import AcquisitionError
 
 DEFAULT_DEST = Path("apks")
 HASH_CHUNK_BYTES = 1024 * 1024
+DOWNLOAD_CHUNK_BYTES = 256 * 1024
+
+# Big apps are genuinely huge; the cap exists to stop a mistyped URL from
+# filling a disk, not to second-guess the app under analysis.
+DEFAULT_MAX_BYTES = 3 * 1024**3
+NETWORK_TIMEOUT_SECONDS = 60
+USER_AGENT = f"apk-lens/{__version__} (+https://github.com/jacksonmafra-umain/apk-lens)"
+HTML_CONTENT_TYPES = ("text/html", "application/xhtml")
+SAFE_FILENAME = re.compile(r"[^A-Za-z0-9._+-]+")
 
 LOCAL = "local"
 DOWNLOAD = "download"
@@ -114,17 +127,116 @@ def describe(path: Path, source: str, kind: str, resolved_url: str | None = None
     )
 
 
-def acquire(source: str, dest_dir: Path | None = None, *, force: bool = False) -> Provenance:
+def safe_filename(candidate: str, fallback: str = "download.apk") -> str:
+    name = SAFE_FILENAME.sub("_", urllib.parse.unquote(candidate)).strip("._")
+    return name or fallback
+
+
+def _filename_for(response, url: str) -> str:
+    disposition = response.headers.get("Content-Disposition", "")
+    match = re.search(r'filename\*?=(?:UTF-8\'\'|")?([^";]+)', disposition)
+    if match:
+        return safe_filename(Path(match.group(1)).name)
+
+    from_url = Path(urllib.parse.urlparse(url).path).name
+    if from_url:
+        return safe_filename(from_url)
+    return "download.apk"
+
+
+def _open(url: str):
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        return urllib.request.urlopen(request, timeout=NETWORK_TIMEOUT_SECONDS)  # noqa: S310
+    except urllib.error.HTTPError as failure:
+        raise AcquisitionError(
+            f"the server answered {failure.code} {failure.reason} for {url}",
+            hint="open the link in a browser and copy the direct file URL",
+        ) from failure
+    except (urllib.error.URLError, OSError, ValueError) as failure:
+        raise AcquisitionError(f"could not reach {url}: {failure}") from failure
+
+
+def _stream(response, target: Path, max_bytes: int) -> int:
+    total = int(response.headers.get("Content-Length") or 0)
+    if total and total > max_bytes:
+        raise AcquisitionError(
+            f"the file is {human_size(total)}, above the {human_size(max_bytes)} limit",
+            hint="raise it with --max-size if that is really the file you want",
+        )
+
+    written = 0
+    partial = target.with_name(target.name + ".part")
+    next_report = 0
+    with partial.open("wb") as handle:
+        while chunk := response.read(DOWNLOAD_CHUNK_BYTES):
+            written += len(chunk)
+            if written > max_bytes:
+                handle.close()
+                partial.unlink(missing_ok=True)
+                raise AcquisitionError(
+                    f"download exceeded the {human_size(max_bytes)} limit",
+                    hint="raise it with --max-size if that is really the file you want",
+                )
+            handle.write(chunk)
+            if written >= next_report:
+                console.progress(written, total)
+                next_report = written + 4 * 1024 * 1024
+    console.progress(written, total or written, final=True)
+    partial.replace(target)
+    return written
+
+
+def download(url: str, dest_dir: Path, *, max_bytes: int = DEFAULT_MAX_BYTES,
+             force: bool = False) -> Provenance:
+    """Fetch ``url`` into ``dest_dir``, reusing an intact previous download."""
+    dest_dir.mkdir(parents=True, exist_ok=True)
+
+    with _open(url) as response:
+        final_url = response.geturl()
+        content_type = (response.headers.get_content_type() or "").lower()
+        if content_type.startswith(HTML_CONTENT_TYPES):
+            raise AcquisitionError(
+                f"{final_url} served a web page, not a file",
+                hint="open it in a browser and copy the direct download link",
+            )
+
+        target = dest_dir / _filename_for(response, final_url)
+        cached = read_provenance(target)
+        if target.exists() and not force:
+            if cached and cached.sha256 == sha256_file(target):
+                console.note(f"reusing {target} (already downloaded, hash matches)")
+                return cached
+            console.note(f"re-downloading {target.name} (no matching hash on disk)")
+
+        console.note(f"downloading {target.name}")
+        _stream(response, target, max_bytes)
+
+    record = describe(target, source=url, kind=DOWNLOAD, resolved_url=final_url)
+    write_provenance(record)
+    return record
+
+
+def acquire(
+    source: str,
+    dest_dir: Path | None = None,
+    *,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+    force: bool = False,
+) -> Provenance:
     """Resolve ``source`` — a local path or an ``http(s)`` URL — to a bundle on disk.
 
     A local file is left exactly where it is; the tool never moves or rewrites
     a user's own copy of an app.
     """
     if source.startswith(("http://", "https://")):
-        raise AcquisitionError(
-            "downloading from a URL is not wired up yet",
-            hint="pass a local .apk / .xapk / .apks path for now",
+        record = download(
+            source, dest_dir or DEFAULT_DEST, max_bytes=max_bytes, force=force
         )
+        shape = bundles.CONTAINER_DESCRIPTIONS[record.container]
+        console.note(f"{record.filename} — {record.size_human}, {shape}")
+        console.note(f"sha256 {record.sha256}")
+        return record
 
     path = Path(source).expanduser()
     record = describe(path, source=source, kind=LOCAL)
