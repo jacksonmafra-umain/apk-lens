@@ -37,6 +37,15 @@ USER_AGENT = f"apk-lens/{__version__} (+https://github.com/jacksonmafra-umain/ap
 HTML_CONTENT_TYPES = ("text/html", "application/xhtml")
 SAFE_FILENAME = re.compile(r"[^A-Za-z0-9._+-]+")
 
+# Mirrors hand out a landing page rather than the file. Two hops is enough for
+# every layout seen in practice (app page -> download page -> file) and keeps
+# the tool from wandering around a site.
+MAX_PAGE_HOPS = 2
+PAGE_READ_LIMIT = 512 * 1024
+# The query string is part of the link: signed CDN URLs stop working without it.
+FILE_LINK = re.compile(r"""href=["']([^"']+\.(?:xapk|apks|apk)(?:\?[^"']*)?)["']""", re.I)
+DOWNLOAD_LINK = re.compile(r"""href=["']([^"']*(?:/download|download=|/dl/)[^"']*)["']""", re.I)
+
 LOCAL = "local"
 DOWNLOAD = "download"
 
@@ -157,6 +166,52 @@ def _open(url: str):
         raise AcquisitionError(f"could not reach {url}: {failure}") from failure
 
 
+def _page_links(html: str, base_url: str) -> list[str]:
+    """Direct file links first, then anything that looks like a download step."""
+    ordered: list[str] = []
+    for pattern in (FILE_LINK, DOWNLOAD_LINK):
+        for match in pattern.finditer(html):
+            absolute = urllib.parse.urljoin(base_url, match.group(1))
+            if absolute not in ordered:
+                ordered.append(absolute)
+    return ordered
+
+
+def _open_file(url: str):
+    """Open ``url``, following mirror landing pages until a real file appears."""
+    visited: list[str] = []
+    current = url
+
+    for _ in range(MAX_PAGE_HOPS + 1):
+        response = _open(current)
+        content_type = (response.headers.get_content_type() or "").lower()
+        if not content_type.startswith(HTML_CONTENT_TYPES):
+            return response
+
+        page_url = response.geturl()
+        html = response.read(PAGE_READ_LIMIT).decode("utf-8", errors="replace")
+        response.close()
+        visited.append(current)
+        visited.append(page_url)
+
+        candidates = [link for link in _page_links(html, page_url) if link not in visited]
+        if not candidates:
+            raise AcquisitionError(
+                f"{page_url} is a web page and no download link could be found on it",
+                hint=(
+                    "open the page in a browser, start the download, then copy the "
+                    "direct file URL and pass that instead"
+                ),
+            )
+        console.note(f"following download link: {candidates[0]}")
+        current = candidates[0]
+
+    raise AcquisitionError(
+        f"followed {MAX_PAGE_HOPS} pages from {url} without reaching a file",
+        hint="copy the direct file URL from your browser's download list",
+    )
+
+
 def _stream(response, target: Path, max_bytes: int) -> int:
     total = int(response.headers.get("Content-Length") or 0)
     if total and total > max_bytes:
@@ -192,15 +247,8 @@ def download(url: str, dest_dir: Path, *, max_bytes: int = DEFAULT_MAX_BYTES,
     """Fetch ``url`` into ``dest_dir``, reusing an intact previous download."""
     dest_dir.mkdir(parents=True, exist_ok=True)
 
-    with _open(url) as response:
+    with _open_file(url) as response:
         final_url = response.geturl()
-        content_type = (response.headers.get_content_type() or "").lower()
-        if content_type.startswith(HTML_CONTENT_TYPES):
-            raise AcquisitionError(
-                f"{final_url} served a web page, not a file",
-                hint="open it in a browser and copy the direct download link",
-            )
-
         target = dest_dir / _filename_for(response, final_url)
         cached = read_provenance(target)
         if target.exists() and not force:
