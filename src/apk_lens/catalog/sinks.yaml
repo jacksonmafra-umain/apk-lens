@@ -1,0 +1,353 @@
+# Sensitive-API catalog.
+#
+# Each sink is an Android API whose presence tells you something about what an
+# app is built to do. Four fields per entry, and none of them is decoration:
+#
+#   means            what calling it gives the app, in plain language
+#   legitimate_use   the feature that normally explains it, so a reader can
+#                    weigh the finding instead of just reacting to it
+#   proven_by        what evidence would turn "capability present" into
+#                    "behaviour observed" — always something static analysis
+#                    cannot do, which is the honest part
+#   pattern          the regex matched against the corpus
+#
+# Adding a sink needs no Python. See docs/extending-the-catalogs.md.
+version: 1
+
+# Path fragments that mean "this is bundled third-party code, not the app's own".
+# A `content://sms` string inside a vendor privacy monitor is not the app
+# reading your messages, and merging the two would be a false finding.
+sdk_path_markers:
+  - com/google/
+  - com/android/gms/
+  - com/facebook/
+  - com/amazon/
+  - com/adjust/
+  - com/appsflyer/
+  - io/branch/
+  - com/amplitude/
+  - com/mixpanel/
+  - com/segment/
+  - io/sentry/
+  - com/bugsnag/
+  - com/datadog/
+  - com/newrelic/
+  - com/unity3d/
+  - com/applovin/
+  - com/ironsource/
+  - com/vungle/
+  - com/inmobi/
+  - com/braze/
+  - com/appboy/
+  - com/onesignal/
+  - com/urbanairship/
+  - com/clevertap/
+  - com/intercom/
+  - com/zendesk/
+  - com/stripe/
+  - com/paypal/
+  - com/braintreepayments/
+  - com/threatmetrix/
+  - com/squareup/
+  - okhttp3/
+  - retrofit2/
+  - androidx/
+  - kotlin/
+  - kotlinx/
+
+categories:
+  location:
+    label: Location
+    why_it_matters: >
+      Movement history is among the most identifying data a phone holds: a week of
+      coordinates usually names a person even with no other field attached.
+    sinks:
+      - id: last_known_location
+        pattern: getLastKnownLocation
+        means: Read the most recent position the system has, with no wait and no prompt.
+        legitimate_use: Showing nearby results the instant a screen opens.
+        proven_by: A runtime hook on the call, or captured traffic containing coordinates.
+      - id: location_updates
+        pattern: requestLocationUpdates
+        means: Subscribe to a continuous stream of position updates.
+        legitimate_use: Navigation, ride tracking, a running app.
+        proven_by: Observing the subscription live, and how long it stays active.
+      - id: fused_location
+        pattern: FusedLocationProviderClient|getFusedLocationProviderClient
+        means: Use the Play services location API, which fuses GPS, Wi-Fi and cell signals.
+        legitimate_use: Battery-efficient location for maps and local search.
+        proven_by: A runtime hook; the API itself does not reveal the accuracy requested.
+      - id: geofence
+        pattern: GeofencingClient|addGeofences
+        means: Ask to be woken when the device enters or leaves an area.
+        legitimate_use: Reminders and check-in features tied to a place.
+        proven_by: Inspecting the registered regions at runtime.
+      - id: exif_location
+        pattern: ExifInterface|TAG_GPS_LATITUDE
+        means: Read the metadata embedded in a photo, which can include where it was taken.
+        legitimate_use: Showing a photo on a map, or stripping the data before upload.
+        proven_by: Watching whether the fields are read before or after an upload.
+
+  contacts:
+    label: Contacts
+    why_it_matters: >
+      Contact upload exposes people who never installed the app and never agreed to
+      anything. It is the clearest case where one user's consent covers other people's data.
+    sinks:
+      - id: contacts_provider
+        pattern: ContactsContract|content://com\.android\.contacts
+        means: Read the device address book.
+        legitimate_use: A "find friends" or invite feature the user explicitly starts.
+        proven_by: Observing whether a request body carries names, numbers or their hashes.
+      - id: accounts
+        pattern: AccountManager|getAccountsByType
+        means: List the accounts configured on the device.
+        legitimate_use: Offering one-tap sign-in with an account already present.
+        proven_by: A runtime hook showing which account types are enumerated.
+
+  clipboard:
+    label: Clipboard
+    why_it_matters: >
+      The clipboard commonly holds passwords, addresses and one-time codes. What matters
+      is *when* it is read: on a paste the user performed, or on every app launch.
+    sinks:
+      - id: read_clipboard
+        pattern: getPrimaryClip
+        means: Read whatever is currently on the clipboard.
+        legitimate_use: A paste action, or offering to use a copied code or link.
+        proven_by: >
+          A hook on the call, to see whether it fires from a user paste or from a
+          lifecycle callback such as onResume.
+      - id: clipboard_listener
+        pattern: addPrimaryClipChangedListener
+        means: Be notified every time the clipboard changes.
+        legitimate_use: A keyboard or a clipboard manager.
+        proven_by: Observing the listener's lifetime and what it does with the value.
+
+  identifiers:
+    label: Persistent identifiers
+    why_it_matters: >
+      A stable identifier is what lets separate sessions, and separate apps, be joined
+      into one profile. Whether it survives a reset is the whole question.
+    sinks:
+      - id: advertising_id
+        pattern: AdvertisingIdClient|getAdvertisingIdInfo|AdvertisingIdInfo
+        means: Read the advertising identifier, which the user can reset and opt out of.
+        legitimate_use: Attributing an install or a purchase to a campaign.
+        proven_by: Seeing which parties the value is sent to, and whether opt-out is honoured.
+      - id: android_id
+        pattern: Settings\.Secure.{0,40}ANDROID_ID|getString\(.{0,30}android_id
+        means: Read a per-app, per-device identifier that survives app data being cleared.
+        legitimate_use: Anti-abuse, licensing, and de-duplicating installs.
+        proven_by: Observing whether it is combined with other fields into a fingerprint.
+      - id: hardware_ids
+        pattern: getDeviceId|getImei|getMeid|getSerial|getSubscriberId|getSimSerialNumber
+        means: Read a hardware identifier that a user cannot change or reset.
+        legitimate_use: Almost none on modern Android; these APIs are restricted.
+        proven_by: A runtime hook; on recent versions the call usually fails or returns a stub.
+      - id: mac_address
+        pattern: getMacAddress|BluetoothAdapter.{0,20}getAddress
+        means: Read a network hardware address.
+        legitimate_use: Local device pairing.
+        proven_by: A hook; modern Android returns a fixed placeholder to most apps.
+      - id: gsf_id
+        pattern: com\.google\.android\.gsf|gservices
+        means: Read a Google services framework identifier.
+        legitimate_use: Play services integration.
+        proven_by: Observing whether the value leaves the device.
+
+  device_profile:
+    label: Device and network profile
+    why_it_matters: >
+      Individually harmless fields — model, locale, timezone, screen size, carrier —
+      combine into a fingerprint that is stable enough to recognise a device without
+      any identifier at all.
+    sinks:
+      - id: telephony_operator
+        pattern: getSimCountryIso|getNetworkOperatorName|getNetworkCountryIso|getSimOperator
+        means: Read the carrier and the country the SIM belongs to.
+        legitimate_use: Choosing a language, currency, or a nearby server.
+        proven_by: Seeing whether the field appears in an outbound request.
+      - id: build_fingerprint
+        pattern: Build\.FINGERPRINT|Build\.SERIAL|ro\.build\.fingerprint
+        means: Read a detailed description of the device's build.
+        legitimate_use: Crash triage and compatibility workarounds.
+        proven_by: Observing whether it is combined into a persistent identifier.
+      - id: installed_input_methods
+        pattern: getEnabledInputMethodList|InputMethodManager.{0,30}getInputMethodList
+        means: List the keyboards installed on the device.
+        legitimate_use: Adapting the input experience.
+        proven_by: A hook showing whether the list is reported anywhere.
+      - id: battery_and_sensors_profile
+        pattern: BatteryManager|getSensorList
+        means: Read battery state, or enumerate the device's sensors.
+        legitimate_use: Deferring heavy work while on battery; feature detection.
+        proven_by: Observing whether the enumeration is used for fingerprinting.
+
+  nearby_scanning:
+    label: Wi-Fi and Bluetooth scanning
+    why_it_matters: >
+      Nearby networks and beacons are a location signal that works without the location
+      permission, and a presence signal that works indoors.
+    sinks:
+      - id: wifi_scan
+        pattern: getScanResults|startScan\(\)|WifiManager
+        means: Enumerate the Wi-Fi networks around the device.
+        legitimate_use: Connecting a smart device, or picking a network.
+        proven_by: Seeing whether scan results are sent off the device.
+      - id: wifi_connection_info
+        pattern: getConnectionInfo|getConfiguredNetworks
+        means: Read the currently connected network, or every saved network.
+        legitimate_use: Detecting a captive portal, or offering an offline mode.
+        proven_by: Observing which fields leave the device.
+      - id: bluetooth_scan
+        pattern: startLeScan|startDiscovery|BluetoothLeScanner
+        means: Discover nearby Bluetooth devices and beacons.
+        legitimate_use: Pairing with headphones, wearables, or a car.
+        proven_by: A hook on the scan callback and what it reports.
+
+  installed_apps:
+    label: Installed-app detection
+    why_it_matters: >
+      The set of apps on a phone is both a profile of a person and a competitive
+      intelligence feed. Whether the check is targeted or exhaustive is the distinction
+      that matters.
+    sinks:
+      - id: list_installed
+        pattern: getInstalledPackages|getInstalledApplications
+        means: List apps installed on the device.
+        legitimate_use: A launcher, an app store, a security tool.
+        proven_by: Seeing whether the list, or a digest of it, is transmitted.
+      - id: targeted_package_check
+        pattern: getPackageInfo|isPackageInstalled|resolveActivity|queryIntentActivities
+        means: Check whether one specific app is present.
+        legitimate_use: Offering a share target, or a payment method the user already has.
+        proven_by: Reading the manifest's <queries> list to see which apps are checked.
+      - id: usage_stats
+        pattern: UsageStatsManager|queryUsageStats
+        means: Read which apps the user opens and for how long.
+        legitimate_use: Digital wellbeing and parental controls.
+        proven_by: A hook; this also requires a permission the user grants in Settings.
+
+  media_capture:
+    label: Camera, microphone and screen
+    why_it_matters: >
+      These are the sinks users worry about most. Presence is expected in many apps;
+      what static analysis cannot show is whether capture happens unprompted.
+    sinks:
+      - id: camera
+        pattern: Camera2|CameraManager|openCamera|ACTION_IMAGE_CAPTURE
+        means: Capture photo or video.
+        legitimate_use: Any capture, scanning or video-call feature.
+        proven_by: A hook on the capture session, showing when it opens.
+      - id: audio_record
+        pattern: AudioRecord|MediaRecorder|startRecording
+        means: Record from the microphone.
+        legitimate_use: Voice messages, calls, dictation, video recording.
+        proven_by: Observing when a recording session actually starts.
+      - id: screen_capture
+        pattern: MediaProjection|createScreenCaptureIntent|VirtualDisplay
+        means: Capture the device screen.
+        legitimate_use: Screen recording and casting the user starts.
+        proven_by: >
+          A hook; note that Android always shows a system consent dialog before capture
+          begins, so silent capture is not possible from a normal app.
+
+  webview:
+    label: In-app browser
+    why_it_matters: >
+      A JavaScript bridge lets app code read and modify pages the user visits inside the
+      app, including pages the app does not own.
+    sinks:
+      - id: js_interface
+        pattern: addJavascriptInterface
+        means: Expose native methods to JavaScript running in the web view.
+        legitimate_use: A hybrid app talking to its own web content.
+        proven_by: Reading which object is exposed and to which origins.
+      - id: js_injection
+        pattern: 'evaluateJavascript|loadUrl\(\s*"javascript:'
+        means: Run script inside a loaded page.
+        legitimate_use: Adapting the app's own web pages.
+        proven_by: >
+          Capturing the injected script and the origins it runs on — third-party pages
+          are the case that matters.
+      - id: cookie_access
+        pattern: CookieManager|getCookie
+        means: Read or write cookies for pages loaded in the app.
+        legitimate_use: Keeping a user signed in across app and web.
+        proven_by: Observing which domains' cookies are touched.
+
+  process_and_files:
+    label: Process execution and filesystem
+    why_it_matters: >
+      Reading system paths or running commands is normal for integrity checks and
+      abnormal as a data source. The difference is what is read, and what happens next.
+    sinks:
+      - id: runtime_exec
+        pattern: Runtime\.getRuntime\(\)\.exec|ProcessBuilder
+        means: Run a shell command.
+        legitimate_use: Reading a system property, or checking for an emulator.
+        proven_by: Capturing the command line and its output at runtime.
+      - id: root_check
+        pattern: /system/xbin/su|/system/bin/su|isDeviceRooted|SafetyNet|PlayIntegrity
+        means: Check whether the device is rooted or tampered with.
+        legitimate_use: Fraud prevention, DRM, banking compliance.
+        proven_by: A hook; a check is not the same as an enforcement action.
+      - id: proc_files
+        pattern: /proc/self|/proc/cpuinfo|/proc/net/|/proc/version
+        means: Read kernel-exposed information about the device or the process.
+        legitimate_use: Detecting an emulator, or reading CPU capability.
+        proven_by: Seeing which paths are read and whether the contents are transmitted.
+      - id: other_app_data
+        # Kept lookaround-free so the pattern works in every search engine:
+        # a literal package path starts with a letter, a placeholder does not.
+        pattern: '/data/data/[a-z]|/data/user/0/[a-z]'
+        means: Reference an application data directory by path.
+        legitimate_use: Its own directory, usually via a formatted string.
+        proven_by: >
+          Resolving the path at runtime; on modern Android another app's directory is
+          unreadable without root, so a literal path is usually self-inspection.
+
+  crypto_and_storage:
+    label: Local storage and encryption
+    why_it_matters: >
+      Where a token or a profile is stored decides whether a lost phone is a breach, and
+      whether analysis can see the data at all.
+    sinks:
+      - id: keystore
+        pattern: AndroidKeyStore|KeyGenParameterSpec
+        means: Use hardware-backed key storage.
+        legitimate_use: Protecting credentials properly. A reassuring finding.
+        proven_by: Not needed; this one is good news either way.
+      - id: encrypted_prefs
+        pattern: EncryptedSharedPreferences|MasterKey
+        means: Store local settings encrypted at rest.
+        legitimate_use: Protecting tokens on device. Also a reassuring finding.
+        proven_by: Not needed.
+      - id: plain_prefs_with_secrets
+        pattern: getSharedPreferences.{0,60}(token|password|secret|api_key)
+        means: Store something credential-shaped in plain local settings.
+        legitimate_use: Rarely justified; a key name is not proof of the value.
+        proven_by: Reading the stored file on a device to see the actual value.
+
+  telemetry:
+    label: Background delivery
+    why_it_matters: >
+      Scheduling and batching are how data leaves the device without the user being
+      present. This is about *when* rather than *what*.
+    sinks:
+      - id: workmanager
+        pattern: WorkManager|OneTimeWorkRequest|PeriodicWorkRequest
+        means: Schedule work that survives the app being closed.
+        legitimate_use: Sync, uploads, retries.
+        proven_by: Observing which jobs run and what they send.
+      - id: job_scheduler
+        pattern: JobScheduler|JobInfo\.Builder
+        means: Schedule work under system conditions such as charging or Wi-Fi.
+        legitimate_use: Deferring heavy transfers politely.
+        proven_by: Observing the scheduled jobs at runtime.
+      - id: alarm_manager
+        pattern: AlarmManager|setExactAndAllowWhileIdle
+        means: Wake the device at a chosen time.
+        legitimate_use: Alarms and reminders.
+        proven_by: Observing what runs on the alarm.
