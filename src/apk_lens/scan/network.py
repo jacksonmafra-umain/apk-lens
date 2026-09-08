@@ -141,7 +141,8 @@ class Census:
         self.hosts: set[str] = set()
         self.urls_by_host: dict[str, list[str]] = defaultdict(list)
         self.cleartext_urls: list[str] = []
-        self.rejected_unknown_tld = 0
+        # A set, so the same skipped name found twice is not counted twice.
+        self.rejected: set[str] = set()
 
     def feed(self, text: str) -> None:
         for match in URL.finditer(text):
@@ -160,14 +161,14 @@ class Census:
                 ):
                     self.cleartext_urls.append(url)
             elif domains.looks_like_hostname(host):
-                self.rejected_unknown_tld += 1
+                self.rejected.add(host)
 
         for match in BARE_HOST.finditer(text):
             candidate = match.group().lower()
             if domains.is_hostname(candidate):
                 self.hosts.add(candidate)
             elif domains.looks_like_hostname(candidate):
-                self.rejected_unknown_tld += 1
+                self.rejected.add(candidate)
 
     def finish(self) -> NetworkReport:
         data = catalog.load("hosts")
@@ -178,7 +179,7 @@ class Census:
             url_count=self.url_count,
             host_count=len(self.hosts),
             cleartext_urls=list(self.cleartext_urls),
-            rejected_unknown_tld=self.rejected_unknown_tld,
+            rejected_unknown_tld=len(self.rejected),
         )
 
         grouped: dict[str, list[str]] = defaultdict(list)

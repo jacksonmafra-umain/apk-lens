@@ -90,7 +90,11 @@ def build_apk(
 ) -> Path:
     members = {
         "AndroidManifest.xml": manifest_bytes(package=package),
-        "classes.dex": MINIMAL_DEX + f"https://api.{package}.example/v1".encode(),
+        "classes.dex": (
+            MINIMAL_DEX
+            + f"https://api.{package.rsplit('.', 1)[-1]}.example.com/v1".encode()
+            + b"\x00https://api.amplitude.com/2/httpapi"
+        ),
         "resources.arsc": b"\x02\x00\x0c\x00resources",
         "META-INF/MANIFEST.MF": b"Manifest-Version: 1.0\n",
     }
