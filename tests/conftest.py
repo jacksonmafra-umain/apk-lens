@@ -87,3 +87,9 @@ def apks_file(tmp_path: Path) -> Path:
             "splits/base-arm64_v8a.apk": base.read_bytes(),
         },
     )
+
+
+@pytest.fixture
+def apk_builder():
+    """Build an APK fixture with extra members, for one-off scenarios."""
+    return build_apk

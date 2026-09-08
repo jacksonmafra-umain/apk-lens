@@ -127,31 +127,30 @@ def workspace_dir(provenance: Provenance, base_dir: Path | None = None) -> Path:
 def classify(member_name: str, *, has_code: bool, package: str | None) -> tuple[str, str | None]:
     """Work out what a split APK is for, from its filename.
 
-    Split naming is a convention rather than a guarantee, so the code falls
-    back to ``unknown`` instead of guessing — an unclassified split still gets
-    scanned, it just is not described.
+    Split naming is a convention rather than a guarantee, so anything that does
+    not match falls through to ``unknown`` instead of being guessed at — an
+    unclassified split is still scanned, it just is not described.
     """
-    stem = Path(member_name).stem
+    stem = re.sub(r"\.apk$", "", Path(member_name).name, flags=re.I)
     lowered = stem.lower().replace("-", "_")
 
     for abi in ABIS:
         if abi.replace("-", "_") in lowered:
             return ABI, abi
 
-    if has_code and (
-        lowered in {"base", "base_master"}
-        or lowered.endswith("_master")
-        or (package and lowered.startswith(package.lower()))
-    ):
-        return BASE, None
-
-    tail = lowered.rsplit("config_", 1)[-1] if "config_" in lowered else lowered.rsplit(".", 1)[-1]
+    tail = lowered.rsplit(".", 1)[-1].rsplit("config_", 1)[-1]
     if tail in DENSITIES:
         return DENSITY, None
-    if _LANGUAGE_TAG.match(tail):
-        return LANGUAGE, None
+
+    if lowered.startswith(("config", "split_config")):
+        return (LANGUAGE, None) if _LANGUAGE_TAG.match(tail) else (UNKNOWN, None)
+
     if has_code:
-        return FEATURE if not lowered.startswith("config") else UNKNOWN, None
+        is_feature = lowered.startswith("split_") or "feature" in lowered
+        if is_feature and not (package and lowered.startswith(package.lower())):
+            return FEATURE, None
+        return BASE, None
+
     return UNKNOWN, None
 
 
