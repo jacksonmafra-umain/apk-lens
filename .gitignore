@@ -1,0 +1,44 @@
+# ---------------------------------------------------------------------------
+# App binaries are never committed.
+#
+# They are someone else's copyrighted build, they are large, and redistributing
+# them is not ours to do. Fetch them yourself; the tool records a SHA-256 so a
+# run stays reproducible without the file being in git.
+# ---------------------------------------------------------------------------
+*.apk
+*.xapk
+*.apks
+*.aab
+*.dex
+*.so
+*.jar
+apks/
+
+# ---------------------------------------------------------------------------
+# Analysis output is never committed either.
+#
+# Reports are generated from an APK plus a catalog version. Committing them
+# would age badly and would quietly republish decompiled third-party code.
+# ---------------------------------------------------------------------------
+reports/
+work/
+evidence/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
