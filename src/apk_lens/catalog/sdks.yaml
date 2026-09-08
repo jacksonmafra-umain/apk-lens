@@ -1,0 +1,331 @@
+# Third-party SDK signatures.
+#
+# Most of the data that leaves a phone leaves through someone else's code.
+# Naming those vendors turns an opaque host list into a set of business
+# relationships a reader can understand — and each relationship comes with a
+# public privacy policy they can go and read.
+#
+# Signatures, in rough order of how much they prove:
+#   packages       a package path in the code (strongest: the code is there)
+#   classes        a distinctive class or symbol name
+#   manifest_keys  a <meta-data> key the SDK requires to be configured
+#   native_libs    a bundled .so filename
+#   hosts          domains the SDK talks to (weakest alone: a string can be stale)
+#
+# `collects` is what the vendor's own documentation says it handles. It is not a
+# claim about this app, and the scanner never presents it as one.
+version: 1
+
+sdks:
+  - id: play_services
+    vendor: Google Play services
+    category: platform
+    collects: Device and account identity, plus whatever the specific modules are used for.
+    docs: https://developers.google.com/android/guides/overview
+    packages: [com/google/android/gms]
+    manifest_keys: [com.google.android.gms.version]
+  - id: firebase_analytics
+    vendor: Google Firebase Analytics
+    category: product analytics
+    collects: Automatic and custom app events tied to an installation id and the advertising id.
+    docs: https://firebase.google.com/docs/analytics
+    packages: [com/google/firebase/analytics, com/google/android/gms/measurement]
+    hosts: [app-measurement.com]
+  - id: firebase_messaging
+    vendor: Google Firebase Cloud Messaging
+    category: push
+    collects: A device push token, app version, and delivery metrics.
+    docs: https://firebase.google.com/docs/cloud-messaging
+    packages: [com/google/firebase/messaging]
+  - id: firebase_remote_config
+    vendor: Google Firebase Remote Config
+    category: remote configuration
+    collects: >
+      Device and app attributes used for targeting. Notable because behaviour can
+      change after install without a new release.
+    docs: https://firebase.google.com/docs/remote-config
+    packages: [com/google/firebase/remoteconfig]
+  - id: crashlytics
+    vendor: Google Crashlytics
+    category: crash reporting
+    collects: Stack traces, device model, OS version, and custom breadcrumb logs.
+    docs: https://firebase.google.com/docs/crashlytics
+    packages: [com/google/firebase/crashlytics, com/crashlytics]
+    hosts: [crashlytics.com]
+  - id: admob
+    vendor: Google AdMob
+    category: advertising
+    collects: Advertising identifier, ad interactions, coarse location, app context.
+    docs: https://developers.google.com/admob/android/privacy
+    packages: [com/google/android/gms/ads]
+    manifest_keys: [com.google.android.gms.ads.APPLICATION_ID]
+    hosts: [googlesyndication.com, doubleclick.net]
+  - id: facebook_sdk
+    vendor: Meta (Facebook SDK)
+    category: advertising and social
+    collects: Advertising identifier, app events, install attribution, login identity.
+    docs: https://developers.facebook.com/docs/privacy
+    packages: [com/facebook/appevents, com/facebook/internal, com/facebook/login]
+    manifest_keys: [com.facebook.sdk.ApplicationId]
+    hosts: [graph.facebook.com, facebook.com]
+  - id: adjust
+    vendor: Adjust
+    category: attribution
+    collects: Advertising identifier, install and click attribution, session and event data.
+    docs: https://www.adjust.com/terms/privacy-policy/
+    packages: [com/adjust/sdk]
+    classes: [AdjustConfig]
+    hosts: [adjust.com]
+  - id: appsflyer
+    vendor: AppsFlyer
+    category: attribution
+    collects: Advertising identifier, install referrer, in-app events, device attributes.
+    docs: https://www.appsflyer.com/legal/services-privacy-policy/
+    packages: [com/appsflyer]
+    classes: [AppsFlyerLib]
+    hosts: [appsflyer.com, appsflyersdk.com]
+  - id: branch
+    vendor: Branch
+    category: attribution and deep linking
+    collects: Device attributes used for deferred deep linking, click and install attribution.
+    docs: https://branch.io/policies/privacy-policy/
+    packages: [io/branch/referral]
+    hosts: [branch.io, app.link]
+  - id: kochava
+    vendor: Kochava
+    category: attribution
+    collects: Advertising identifier, install and event attribution.
+    docs: https://www.kochava.com/support-privacy/
+    packages: [com/kochava/base, com/kochava/tracker]
+    hosts: [kochava.com]
+  - id: singular
+    vendor: Singular
+    category: attribution
+    collects: Advertising identifier, attribution and event data.
+    docs: https://www.singular.net/privacy-policy/
+    packages: [com/singular/sdk]
+    hosts: [singular.net]
+  - id: amplitude
+    vendor: Amplitude
+    category: product analytics
+    collects: An event stream keyed to a user or device identifier, plus device attributes.
+    docs: https://amplitude.com/privacy
+    packages: [com/amplitude/api, com/amplitude/android]
+    hosts: [amplitude.com]
+  - id: mixpanel
+    vendor: Mixpanel
+    category: product analytics
+    collects: Event stream, user profile properties, device attributes.
+    docs: https://mixpanel.com/legal/privacy-policy/
+    packages: [com/mixpanel/android]
+    hosts: [mixpanel.com]
+  - id: segment
+    vendor: Segment
+    category: analytics pipeline
+    collects: >
+      One event stream, forwarded to many other vendors chosen server-side — so the
+      real recipient list is not visible in the app at all.
+    docs: https://segment.com/legal/privacy/
+    packages: [com/segment/analytics]
+    hosts: [segment.com, segment.io]
+  - id: sentry
+    vendor: Sentry
+    category: crash reporting
+    collects: Stack traces, breadcrumbs, release and device metadata.
+    docs: https://sentry.io/privacy/
+    packages: [io/sentry]
+    hosts: [sentry.io]
+  - id: bugsnag
+    vendor: Bugsnag
+    category: crash reporting
+    collects: Stack traces, device and app state.
+    docs: https://www.bugsnag.com/legal/privacy-policy
+    packages: [com/bugsnag/android]
+    hosts: [bugsnag.com]
+  - id: datadog
+    vendor: Datadog
+    category: observability
+    collects: Traces, logs, and optionally session recordings of the app.
+    docs: https://www.datadoghq.com/legal/privacy/
+    packages: [com/datadog/android]
+    hosts: [datadoghq.com]
+  - id: newrelic
+    vendor: New Relic
+    category: observability
+    collects: Performance traces, network requests, device attributes.
+    docs: https://newrelic.com/termsandconditions/privacy
+    packages: [com/newrelic/agent/android]
+    hosts: [nr-data.net]
+  - id: braze
+    vendor: Braze
+    category: engagement
+    collects: User profile attributes, events, push token, in-app message interactions.
+    docs: https://www.braze.com/company/legal/privacy
+    packages: [com/braze, com/appboy]
+    hosts: [braze.com, appboy.com]
+  - id: onesignal
+    vendor: OneSignal
+    category: push
+    collects: Push token, device attributes, notification interactions.
+    docs: https://onesignal.com/privacy_policy
+    packages: [com/onesignal]
+    hosts: [onesignal.com]
+  - id: airship
+    vendor: Airship
+    category: engagement
+    collects: Push token, channel attributes, engagement events.
+    docs: https://www.airship.com/legal/privacy-request/
+    packages: [com/urbanairship]
+    hosts: [urbanairship.com]
+  - id: clevertap
+    vendor: CleverTap
+    category: engagement
+    collects: User profile, events, push token, device attributes.
+    docs: https://clevertap.com/privacy-policy/
+    packages: [com/clevertap/android]
+    hosts: [clevertap.com, wzrkt.com]
+  - id: intercom
+    vendor: Intercom
+    category: support
+    collects: Conversation content, user identity, device and app attributes.
+    docs: https://www.intercom.com/legal/privacy
+    packages: [io/intercom/android]
+    hosts: [intercom.io]
+  - id: zendesk
+    vendor: Zendesk
+    category: support
+    collects: Support ticket content and user identity.
+    docs: https://www.zendesk.com/company/agreements-and-terms/privacy-notice/
+    packages: [com/zendesk, zendesk/]
+    hosts: [zendesk.com]
+  - id: helpshift
+    vendor: Helpshift
+    category: support
+    collects: Support conversation content, device and app attributes.
+    docs: https://www.helpshift.com/legal/privacy/
+    packages: [com/helpshift]
+    hosts: [helpshift.com]
+  - id: unity_ads
+    vendor: Unity Ads
+    category: advertising
+    collects: Advertising identifier, ad interactions, device attributes.
+    docs: https://unity.com/legal/game-player-and-app-user-privacy-policy
+    packages: [com/unity3d/ads, com/unity3d/services]
+    hosts: [unity3d.com]
+  - id: applovin
+    vendor: AppLovin
+    category: advertising
+    collects: Advertising identifier, ad interactions, device and network attributes.
+    docs: https://www.applovin.com/privacy/
+    packages: [com/applovin]
+    hosts: [applovin.com, applvn.com]
+  - id: ironsource
+    vendor: ironSource
+    category: advertising
+    collects: Advertising identifier, ad interactions, device attributes.
+    docs: https://www.is.com/privacy-policy/
+    packages: [com/ironsource]
+    hosts: [ironsrc.com]
+  - id: vungle
+    vendor: Vungle (Liftoff)
+    category: advertising
+    collects: Advertising identifier, ad interactions, device attributes.
+    docs: https://vungle.com/privacy/
+    packages: [com/vungle]
+    hosts: [vungle.com]
+  - id: inmobi
+    vendor: InMobi
+    category: advertising
+    collects: Advertising identifier, ad interactions, coarse location.
+    docs: https://www.inmobi.com/privacy-policy
+    packages: [com/inmobi]
+    hosts: [inmobi.com]
+  - id: mopub_or_exchange
+    vendor: Ad exchange SDK
+    category: advertising exchange
+    collects: Advertising identifier, bid requests carrying device and app context.
+    docs: https://iabtechlab.com/standards/openrtb/
+    packages: [com/mopub, com/smaato, com/pubmatic]
+  - id: stripe
+    vendor: Stripe
+    category: payments
+    collects: Payment method details entered in the app, device attributes for fraud checks.
+    docs: https://stripe.com/privacy
+    packages: [com/stripe/android]
+    hosts: [stripe.com]
+  - id: braintree_paypal
+    vendor: PayPal / Braintree
+    category: payments
+    collects: Payment method details, device data for risk scoring.
+    docs: https://www.paypal.com/privacy
+    packages: [com/braintreepayments, com/paypal]
+    hosts: [braintreegateway.com, paypal.com]
+  - id: adyen
+    vendor: Adyen
+    category: payments
+    collects: Payment method details and device data for risk scoring.
+    docs: https://www.adyen.com/policies-and-disclaimer/privacy-policy
+    packages: [com/adyen/checkout]
+    hosts: [adyen.com]
+  - id: threatmetrix
+    vendor: ThreatMetrix (LexisNexis)
+    category: anti-fraud
+    collects: >
+      A deep device fingerprint intended to recognise a device across sessions, apps
+      and organisations. Worth flagging precisely because that is its purpose.
+    docs: https://risk.lexisnexis.com/corporate/privacy-policy
+    packages: [com/threatmetrix]
+    native_libs: [libtmxprofiling]
+    hosts: [online-metrix.net]
+  - id: sift
+    vendor: Sift
+    category: anti-fraud
+    collects: Device and behavioural signals for fraud scoring.
+    docs: https://sift.com/service-privacy
+    packages: [siftscience/]
+    hosts: [siftscience.com]
+  - id: appcenter
+    vendor: Microsoft App Center
+    category: crash reporting and analytics
+    collects: Crash reports, session and event analytics.
+    docs: https://privacy.microsoft.com/privacystatement
+    packages: [com/microsoft/appcenter]
+  - id: okhttp
+    vendor: Square OkHttp
+    category: networking library
+    collects: Nothing on its own. Listed because it is the transport many other SDKs use.
+    docs: https://square.github.io/okhttp/
+    packages: [okhttp3/]
+  - id: exoplayer
+    vendor: ExoPlayer / Media3
+    category: media playback
+    collects: Nothing on its own; playback analytics depend on how the app configures it.
+    docs: https://developer.android.com/media/media3
+    packages: [com/google/android/exoplayer2, androidx/media3]
+  - id: flutter
+    vendor: Flutter
+    category: application framework
+    collects: >
+      Nothing on its own. Important for analysis: the app's logic lives in a compiled
+      Dart bundle that Java decompilation does not cover at all.
+    docs: https://flutter.dev/
+    packages: [io/flutter]
+    native_libs: [libflutter, libapp]
+  - id: react_native
+    vendor: React Native
+    category: application framework
+    collects: >
+      Nothing on its own. Important for analysis: the app's logic lives in a JavaScript
+      bundle rather than in the decompiled Java.
+    docs: https://reactnative.dev/
+    packages: [com/facebook/react]
+    native_libs: [libreactnative, libhermes]
+  - id: unity_engine
+    vendor: Unity engine
+    category: game engine
+    collects: >
+      Nothing on its own. Important for analysis: game logic sits in managed
+      assemblies or IL2CPP native code, not in the Java tree.
+    docs: https://unity.com/legal/privacy-policy
+    packages: [com/unity3d/player]
+    native_libs: [libunity, libil2cpp]

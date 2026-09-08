@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -9,19 +8,7 @@ import pytest
 from apk_lens import catalog
 from apk_lens.cli import main
 from apk_lens.scan import sinks
-
-
-@dataclass
-class FakeCorpus:
-    """A stand-in for a built corpus: scanners only need roots and depth."""
-
-    roots: list[Path]
-    depth: str = "full"
-    has_source: bool = True
-    evidence_strength: str = "file:line citations available"
-
-    def search_roots(self) -> list[Path]:
-        return self.roots
+from tests_support import FakeCorpus
 
 
 @pytest.fixture

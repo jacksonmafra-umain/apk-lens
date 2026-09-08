@@ -59,6 +59,7 @@ class ManifestFacts:
     queried_packages: list[str] = field(default_factory=list)
     queried_intents: list[str] = field(default_factory=list)
     queried_providers: list[str] = field(default_factory=list)
+    metadata_keys: list[str] = field(default_factory=list)
     uses_cleartext_traffic: bool | None = None
     network_security_config: str | None = None
     allow_backup: bool | None = None
@@ -154,6 +155,10 @@ def facts_from(root: axml.Element) -> ManifestFacts:
         elif tag == "uses-feature" and name:
             required = _flag(element.get("android:required") or element.get("required"))
             facts.features.append(name if required is not False else f"{name} (optional)")
+        elif tag == "meta-data" and name:
+            # <meta-data> keys are how many SDKs are configured, so the key names
+            # alone identify which vendors are bundled.
+            facts.metadata_keys.append(name)
         elif tag == "application":
             facts.app_name = name or None
             facts.uses_cleartext_traffic = _flag(
@@ -204,6 +209,7 @@ def facts_from(root: axml.Element) -> ManifestFacts:
     facts.permissions = sorted(dict.fromkeys(facts.permissions))
     facts.declared_permissions = sorted(dict.fromkeys(facts.declared_permissions))
     facts.queried_packages = sorted(dict.fromkeys(facts.queried_packages))
+    facts.metadata_keys = sorted(dict.fromkeys(facts.metadata_keys))
     return facts
 
 
